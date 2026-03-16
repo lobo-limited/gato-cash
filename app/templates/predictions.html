@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}Predictions - CA Lottery Predictor{% endblock %}
+
+{% block extra_head %}
+<style>
+    .game-selector {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .game-selector button {
+        padding: 0.5rem 1.25rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.15s;
+    }
+    .game-selector button.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+    .game-selector button:hover:not(.active) {
+        background: var(--bg-hover);
+        color: var(--text);
+    }
+    .prediction-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+    .prediction-digits {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+    .prediction-digits .digit-ball {
+        width: 64px;
+        height: 64px;
+        font-size: 1.8rem;
+    }
+    .confidence-meter {
+        width: 100%;
+        max-width: 400px;
+        margin: 1rem auto;
+    }
+    .confidence-bar-bg {
+        width: 100%;
+        height: 8px;
+        background: var(--border);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .confidence-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.6s ease;
+    }
+    .confidence-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+    .play-recommendation {
+        display: inline-block;
+        padding: 0.5rem 1.5rem;
+        border-radius: 100px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin: 0.75rem 0;
+    }
+    .play-straight { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+    .play-box { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .play-straight_box { background: rgba(234, 179, 8, 0.2); color: #eab308; }
+    .play-combo { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+    .ev-info {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+    }
+    .strategy-section {
+        margin-top: 1.5rem;
+    }
+    .strategy-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .strategy-header:hover {
+        color: var(--accent);
+    }
+    .strategy-header .arrow {
+        transition: transform 0.2s;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+    .strategy-header .arrow.open {
+        transform: rotate(90deg);
+    }
+    .strategy-list {
+        display: none;
+    }
+    .strategy-list.open {
+        display: block;
+    }
+    .strategy-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .strategy-item:last-child {
+        border-bottom: none;
+    }
+    .strategy-name {
+        font-weight: 500;
+        font-size: 0.85rem;
+        min-width: 140px;
+    }
+    .strategy-digits {
+        display: flex;
+        gap: 0.35rem;
+    }
+    .strategy-confidence {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        min-width: 60px;
+        text-align: right;
+    }
+    .hit-yes { color: var(--green); font-weight: 600; }
+    .hit-no { color: var(--red); }
+    .hit-pending { color: var(--text-muted); }
+    .time-selector {
+        display: flex;
+        gap: 0.5rem;
+        margin-left: 1rem;
+    }
+    .time-selector button {
+        padding: 0.4rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.8rem;
+        transition: all 0.15s;
+    }
+    .time-selector button.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: var(--text-muted);
+    }
+    .alt-predictions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+        margin-top: 1rem;
+    }
+    .alt-pred {
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+    .alt-pred .alt-digits {
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Predictions</h1>
+    <div style="display:flex;align-items:center;gap:1rem;">
+        <div class="game-selector">
+            <button class="active" onclick="setGame('daily3')" id="btn-daily3">Daily 3</button>
+            <button onclick="setGame('daily4')" id="btn-daily4">Daily 4</button>
+        </div>
+        <div class="time-selector">
+            <button class="active" onclick="setDrawTime('evening')" id="btn-evening">Evening</button>
+            <button onclick="setDrawTime('midday')" id="btn-midday">Midday</button>
+        </div>
+    </div>
+</div>
+
+<!-- Next Prediction Card -->
+<div class="prediction-card" id="prediction-card">
+    <div class="empty-state" id="prediction-loading">
+        <div class="loading-spinner"></div>
+        <p style="margin-top:1rem;">Loading predictions...</p>
+    </div>
+    <div id="prediction-content" style="display:none;">
+        <div class="card-title">ENSEMBLE PREDICTION</div>
+        <div class="prediction-digits" id="prediction-digits"></div>
+        <div class="confidence-meter">
+            <div class="confidence-bar-bg">
+                <div class="confidence-bar-fill" id="confidence-fill" style="width:0%"></div>
+            </div>
+            <div class="confidence-label">
+                <span>Confidence: <strong id="confidence-value">0%</strong></span>
+                <span id="target-info"></span>
+            </div>
+        </div>
+        <div>
+            <span class="play-recommendation" id="play-rec">STRAIGHT</span>
+        </div>
+        <div class="ev-info" id="ev-info"></div>
+
+        <!-- Alternative ensemble predictions -->
+        <div id="alt-predictions-container" style="margin-top:1.5rem;display:none;">
+            <div class="card-title" style="margin-bottom:0.5rem;">ALTERNATIVE PREDICTIONS</div>
+            <div class="alt-predictions" id="alt-predictions"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Strategy Breakdown -->
+<div class="card">
+    <div class="strategy-header" onclick="toggleStrategies()">
+        <span class="card-title" style="margin:0;">STRATEGY BREAKDOWN</span>
+        <span class="arrow" id="strategy-arrow">&#9654;</span>
+    </div>
+    <div class="strategy-list" id="strategy-list"></div>
+</div>
+
+<!-- Generate Button -->
+<div style="text-align:center;margin-bottom:1.5rem;">
+    <button class="btn btn-primary" onclick="generatePredictions()" id="generate-btn" style="padding:0.75rem 2rem;font-size:0.95rem;">
+        Generate New Predictions
+    </button>
+</div>
+
+<!-- Prediction History -->
+<div class="card">
+    <div class="card-title">PREDICTION HISTORY</div>
+    <div style="overflow-x:auto;">
+        <table id="history-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Strategy</th>
+                    <th>Predicted</th>
+                    <th>Actual</th>
+                    <th>Straight</th>
+                    <th>Box</th>
+                    <th>Confidence</th>
+                </tr>
+            </thead>
+            <tbody id="history-body">
+                <tr><td colspan="8" class="empty-state">Loading history...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentGame = 'daily3';
+let currentDrawTime = 'evening';
+
+function setGame(game) {
+    currentGame = game;
+    document.getElementById('btn-daily3').classList.toggle('active', game === 'daily3');
+    document.getElementById('btn-daily4').classList.toggle('active', game === 'daily4');
+    loadPredictions();
+    loadHistory();
+}
+
+function setDrawTime(time) {
+    currentDrawTime = time;
+    document.getElementById('btn-evening').classList.toggle('active', time === 'evening');
+    document.getElementById('btn-midday').classList.toggle('active', time === 'midday');
+    loadPredictions();
+    loadHistory();
+}
+
+function getConfidenceColor(confidence) {
+    if (confidence >= 0.15) return 'var(--green)';
+    if (confidence >= 0.10) return 'var(--yellow)';
+    return 'var(--orange)';
+}
+
+function formatDigits(digits) {
+    return digits.map(d => `<span class="digit-ball small">${d}</span>`).join('');
+}
+
+function formatDate(isoString) {
+    if (!isoString) return '-';
+    const d = new Date(isoString);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+async function loadPredictions() {
+    const loading = document.getElementById('prediction-loading');
+    const content = document.getElementById('prediction-content');
+    loading.style.display = 'block';
+    content.style.display = 'none';
+
+    try {
+        const res = await fetch(`/api/predictions/next?game_type=${currentGame}&draw_time=${currentDrawTime}`);
+        const data = await res.json();
+
+        if (!data.ensemble && (!data.predictions || data.predictions.length === 0)) {
+            loading.innerHTML = '<p>No predictions available. Click "Generate New Predictions" to start.</p>';
+            return;
+        }
+
+        const ensemble = data.ensemble;
+        if (ensemble) {
+            renderEnsemble(ensemble, data.predictions);
+        }
+
+        renderStrategies(data.strategies || []);
+
+        loading.style.display = 'none';
+        content.style.display = 'block';
+    } catch (err) {
+        loading.innerHTML = '<p>Failed to load predictions. Try generating new ones.</p>';
+        console.error('Error loading predictions:', err);
+    }
+}
+
+function renderEnsemble(ensemble, allPredictions) {
+    // Digits
+    const digitsDiv = document.getElementById('prediction-digits');
+    digitsDiv.innerHTML = ensemble.digits.map(d =>
+        `<span class="digit-ball">${d}</span>`
+    ).join('');
+
+    // Confidence
+    const conf = ensemble.confidence;
+    const confPct = (conf * 100).toFixed(1);
+    const confColor = getConfidenceColor(conf);
+    document.getElementById('confidence-fill').style.width = `${Math.min(conf * 100, 100)}%`;
+    document.getElementById('confidence-fill').style.background = confColor;
+    document.getElementById('confidence-value').textContent = `${confPct}%`;
+    document.getElementById('target-info').textContent =
+        `Target: ${formatDate(ensemble.target_draw_date)} ${ensemble.target_draw_time}`;
+
+    // Play recommendation
+    const playRec = document.getElementById('play-rec');
+    const playType = ensemble.recommended_play_type || 'straight';
+    playRec.textContent = playType.replace('_', '/').toUpperCase();
+    playRec.className = `play-recommendation play-${playType}`;
+
+    // EV info
+    const evInfo = document.getElementById('ev-info');
+    if (ensemble.expected_value !== null && ensemble.expected_value !== undefined) {
+        const ev = parseFloat(ensemble.expected_value);
+        evInfo.textContent = `Expected Value: $${ev.toFixed(4)} per $1 play`;
+    } else {
+        evInfo.textContent = '';
+    }
+
+    // Alternative predictions (other ensemble predictions)
+    const altContainer = document.getElementById('alt-predictions-container');
+    const altDiv = document.getElementById('alt-predictions');
+    const altPreds = allPredictions.filter(p =>
+        p.strategy_name && p.strategy_name.startsWith('ensemble') && p.strategy_name !== 'ensemble'
+    );
+    if (altPreds.length > 0) {
+        altDiv.innerHTML = altPreds.map(p => {
+            const d = p.digits.join('-');
+            const c = (p.confidence * 100).toFixed(1);
+            return `<div class="alt-pred"><span class="alt-digits">${d}</span><span style="color:var(--text-muted)">${c}%</span></div>`;
+        }).join('');
+        altContainer.style.display = 'block';
+    } else {
+        altContainer.style.display = 'none';
+    }
+}
+
+function renderStrategies(strategies) {
+    const list = document.getElementById('strategy-list');
+    if (!strategies || strategies.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding:1rem;">No individual strategy data available.</div>';
+        return;
+    }
+    list.innerHTML = strategies.map(s => {
+        const confPct = (s.confidence * 100).toFixed(1);
+        return `
+            <div class="strategy-item">
+                <span class="strategy-name">${formatStrategyName(s.strategy_name)}</span>
+                <div class="strategy-digits">${formatDigits(s.digits)}</div>
+                <span class="strategy-confidence">${confPct}%</span>
+            </div>
+        `;
+    }).join('');
+}
+
+function formatStrategyName(name) {
+    return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+function toggleStrategies() {
+    const list = document.getElementById('strategy-list');
+    const arrow = document.getElementById('strategy-arrow');
+    list.classList.toggle('open');
+    arrow.classList.toggle('open');
+}
+
+async function loadHistory() {
+    const tbody = document.getElementById('history-body');
+    try {
+        const res = await fetch(`/api/predictions/history?game_type=${currentGame}&limit=20`);
+        const data = await res.json();
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No prediction history yet.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(p => {
+            const predicted = p.digits.join('-');
+            const actual = p.metadata && p.metadata.play_recommendation
+                ? '-'
+                : '-';
+
+            let straightHtml, boxHtml;
+            if (p.scored_at) {
+                straightHtml = p.straight_hit
+                    ? '<span class="hit-yes">HIT</span>'
+                    : '<span class="hit-no">Miss</span>';
+                boxHtml = p.box_hit
+                    ? '<span class="hit-yes">HIT</span>'
+                    : '<span class="hit-no">Miss</span>';
+            } else {
+                straightHtml = '<span class="hit-pending">Pending</span>';
+                boxHtml = '<span class="hit-pending">Pending</span>';
+            }
+
+            const confPct = (p.confidence * 100).toFixed(1);
+
+            return `
+                <tr style="cursor:pointer;" onclick="viewDetail(${p.id})">
+                    <td>${formatDate(p.target_draw_date)}</td>
+                    <td><span class="badge badge-${p.target_draw_time}">${p.target_draw_time}</span></td>
+                    <td>${formatStrategyName(p.strategy_name)}</td>
+                    <td>${predicted}</td>
+                    <td>${actual}</td>
+                    <td>${straightHtml}</td>
+                    <td>${boxHtml}</td>
+                    <td>${confPct}%</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Failed to load history.</td></tr>';
+        console.error('Error loading history:', err);
+    }
+}
+
+async function generatePredictions() {
+    const btn = document.getElementById('generate-btn');
+    btn.disabled = true;
+    btn.textContent = 'Generating...';
+
+    try {
+        const res = await fetch(
+            `/api/predictions/generate?game_type=${currentGame}&draw_time=${currentDrawTime}`,
+            { method: 'POST' }
+        );
+        const data = await res.json();
+        btn.textContent = `Generated ${data.count} predictions`;
+        setTimeout(() => {
+            btn.textContent = 'Generate New Predictions';
+            btn.disabled = false;
+        }, 2000);
+        loadPredictions();
+        loadHistory();
+    } catch (err) {
+        btn.textContent = 'Error - Try Again';
+        btn.disabled = false;
+        console.error('Error generating predictions:', err);
+    }
+}
+
+async function viewDetail(id) {
+    try {
+        const res = await fetch(`/api/predictions/${id}`);
+        const data = await res.json();
+
+        // Show details in a simple modal/alert for now
+        const digits = data.digits.join('-');
+        const conf = (data.confidence * 100).toFixed(1);
+        const play = (data.recommended_play_type || 'N/A').replace('_', '/').toUpperCase();
+        const ev = data.expected_value !== null ? `$${parseFloat(data.expected_value).toFixed(4)}` : 'N/A';
+
+        let msg = `Strategy: ${formatStrategyName(data.strategy_name)}\n`;
+        msg += `Digits: ${digits}\n`;
+        msg += `Confidence: ${conf}%\n`;
+        msg += `Play Type: ${play}\n`;
+        msg += `Expected Value: ${ev}\n`;
+
+        if (data.actual_digits) {
+            msg += `Actual: ${data.actual_digits.join('-')}\n`;
+            msg += `Straight: ${data.straight_hit ? 'HIT' : 'Miss'}\n`;
+            msg += `Box: ${data.box_hit ? 'HIT' : 'Miss'}\n`;
+        }
+
+        if (data.metadata && data.metadata.play_recommendation) {
+            msg += `\n${data.metadata.play_recommendation.reasoning || ''}`;
+        }
+
+        alert(msg);
+    } catch (err) {
+        console.error('Error loading detail:', err);
+    }
+}
+
+// Initial load
+loadPredictions();
+loadHistory();
+</script>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - CA Lottery Predictor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <div>
+        <button class="btn btn-outline" onclick="refreshData()">Refresh Data</button>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="grid-4">
+    <div class="card">
+        <div class="card-title">Total Daily 3 Draws</div>
+        <div class="stat-value">{{ stats.daily3_count | default(0) }}</div>
+        <div class="stat-label">historical draws loaded</div>
+    </div>
+    <div class="card">
+        <div class="card-title">Total Daily 4 Draws</div>
+        <div class="stat-value">{{ stats.daily4_count | default(0) }}</div>
+        <div class="stat-label">historical draws loaded</div>
+    </div>
+    <div class="card">
+        <div class="card-title">Latest Daily 3</div>
+        {% if latest_daily3 %}
+        <div style="margin: 0.5rem 0;">
+            {% for d in latest_daily3.digits %}
+            <span class="digit-ball">{{ d }}</span>
+            {% endfor %}
+        </div>
+        <div class="stat-label">
+            Draw #{{ latest_daily3.draw_number }}
+            <span class="badge {% if latest_daily3.draw_time == 'midday' %}badge-midday{% else %}badge-evening{% endif %}">
+                {{ latest_daily3.draw_time }}
+            </span>
+        </div>
+        {% else %}
+        <div class="stat-label">No draws loaded</div>
+        {% endif %}
+    </div>
+    <div class="card">
+        <div class="card-title">Latest Daily 4</div>
+        {% if latest_daily4 %}
+        <div style="margin: 0.5rem 0;">
+            {% for d in latest_daily4.digits %}
+            <span class="digit-ball">{{ d }}</span>
+            {% endfor %}
+        </div>
+        <div class="stat-label">
+            Draw #{{ latest_daily4.draw_number }}
+            <span class="badge badge-evening">evening</span>
+        </div>
+        {% else %}
+        <div class="stat-label">No draws loaded</div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Draws -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-title">Recent Daily 3 Draws</div>
+        {% for draw in recent_daily3 %}
+        <div class="draw-result">
+            <div>
+                {% for d in draw.digits %}
+                <span class="digit-ball small">{{ d }}</span>
+                {% endfor %}
+            </div>
+            <div class="draw-meta">
+                #{{ draw.draw_number }}<br>
+                {{ draw.draw_date.strftime('%b %d, %Y') }}
+                <span class="badge {% if draw.draw_time == 'midday' %}badge-midday{% else %}badge-evening{% endif %}">
+                    {{ draw.draw_time }}
+                </span>
+            </div>
+        </div>
+        {% else %}
+        <div class="stat-label">No draws loaded yet. Run seed script or click Refresh Data.</div>
+        {% endfor %}
+    </div>
+    <div class="card">
+        <div class="card-title">Recent Daily 4 Draws</div>
+        {% for draw in recent_daily4 %}
+        <div class="draw-result">
+            <div>
+                {% for d in draw.digits %}
+                <span class="digit-ball small">{{ d }}</span>
+                {% endfor %}
+            </div>
+            <div class="draw-meta">
+                #{{ draw.draw_number }}<br>
+                {{ draw.draw_date.strftime('%b %d, %Y') }}
+                <span class="badge badge-evening">evening</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="stat-label">No draws loaded yet. Run seed script or click Refresh Data.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Digit Frequency Quick View -->
+<div class="card">
+    <div class="card-title">Digit Frequency (Last 100 Daily 3 Draws)</div>
+    <canvas id="freqChart" height="80"></canvas>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function refreshData() {
+    const btn = event.target;
+    btn.textContent = 'Refreshing...';
+    btn.disabled = true;
+    try {
+        const resp = await fetch('/api/draws/refresh', { method: 'POST' });
+        if (resp.ok) {
+            window.location.reload();
+        } else {
+            alert('Refresh failed: ' + (await resp.text()));
+        }
+    } catch (e) {
+        alert('Refresh failed: ' + e.message);
+    } finally {
+        btn.textContent = 'Refresh Data';
+        btn.disabled = false;
+    }
+}
+
+// Draw frequency chart
+const freqData = {{ freq_data | tojson | default('{}') }};
+if (freqData.labels) {
+    new Chart(document.getElementById('freqChart'), {
+        type: 'bar',
+        data: {
+            labels: freqData.labels,
+            datasets: [{
+                label: 'Frequency',
+                data: freqData.counts,
+                backgroundColor: '#6366f1',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { color: '#2a2d3a' }, ticks: { color: '#8b8d97' } },
+                y: { grid: { color: '#2a2d3a' }, ticks: { color: '#8b8d97' } }
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

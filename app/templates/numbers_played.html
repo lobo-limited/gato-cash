@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+{% block title %}Numbers Played - CA Lottery Predictor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Numbers Played</h1>
+    <div style="display:flex;gap:0.5rem;">
+        <button class="btn btn-outline" onclick="scoreAll()">Score All</button>
+    </div>
+</div>
+
+<!-- Accuracy Stats -->
+<div id="accuracy-section">
+    <div class="grid-4" id="stat-cards">
+        <div class="card"><div class="card-title">Total Plays</div><div class="stat-value" id="stat-total">-</div></div>
+        <div class="card"><div class="card-title">Straight Hits</div><div class="stat-value" id="stat-straight" style="color:var(--green)">-</div><div class="stat-label" id="stat-straight-rate"></div></div>
+        <div class="card"><div class="card-title">Box Hits</div><div class="stat-value" id="stat-box" style="color:var(--accent)">-</div><div class="stat-label" id="stat-box-rate"></div></div>
+        <div class="card"><div class="card-title">Net Profit</div><div class="stat-value" id="stat-profit">-</div><div class="stat-label" id="stat-roi"></div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:1.5rem;">
+        <div class="card">
+            <div class="card-title">Streaks</div>
+            <div style="display:flex;gap:2rem;">
+                <div><span class="stat-label">Best streak: </span><strong id="stat-best-streak">-</strong></div>
+                <div><span class="stat-label">Current streak: </span><strong id="stat-current-streak">-</strong></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">By Game</div>
+            <div id="stat-by-game" style="font-size:0.85rem;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Add New Play Form -->
+<div class="card">
+    <div class="card-title">Record Numbers Played</div>
+    <form id="add-form" onsubmit="addPlay(event)" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-end;">
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Game</label>
+            <select id="f-game" class="form-input" onchange="updateDigitFields()">
+                <option value="daily3">Daily 3</option>
+                <option value="daily4">Daily 4</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Digit 1</label>
+            <select id="f-d1" class="form-input">
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Digit 2</label>
+            <select id="f-d2" class="form-input">
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Digit 3</label>
+            <select id="f-d3" class="form-input">
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+        </div>
+        <div id="d4-wrapper">
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Digit 4</label>
+            <select id="f-d4" class="form-input">
+                <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                <option value="3">3</option><option value="4">4</option><option value="5">5</option>
+                <option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Play Type</label>
+            <select id="f-play-type" class="form-input">
+                <option value="straight">Straight</option>
+                <option value="box">Box</option>
+                <option value="straight_box">Straight/Box</option>
+                <option value="combo">Combo</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Draw Date</label>
+            <input type="date" id="f-date" class="form-input" required>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Draw Time</label>
+            <select id="f-time" class="form-input">
+                <option value="evening">Evening</option>
+                <option value="midday">Midday</option>
+            </select>
+        </div>
+        <div>
+            <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:0.25rem;">Wager ($)</label>
+            <input type="number" id="f-wager" class="form-input" value="1" min="0.5" step="0.5" style="width:70px;">
+        </div>
+        <div>
+            <button type="submit" class="btn btn-primary">Add Play</button>
+        </div>
+    </form>
+    <div id="form-msg" style="margin-top:0.75rem;font-size:0.85rem;"></div>
+</div>
+
+<!-- Plays History -->
+<div class="card">
+    <div class="card-title">Play History</div>
+    <div style="margin-bottom:1rem;display:flex;gap:0.5rem;">
+        <button class="btn btn-outline tab-btn active" data-filter="all" onclick="filterPlays('all',this)">All</button>
+        <button class="btn btn-outline tab-btn" data-filter="daily3" onclick="filterPlays('daily3',this)">Daily 3</button>
+        <button class="btn btn-outline tab-btn" data-filter="daily4" onclick="filterPlays('daily4',this)">Daily 4</button>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th><th>Time</th><th>Game</th><th>Played</th><th>Play Type</th>
+                <th>Wager</th><th>Straight</th><th>Box</th><th>Won</th><th></th>
+            </tr>
+        </thead>
+        <tbody id="plays-body"></tbody>
+    </table>
+    <div id="plays-empty" style="text-align:center;padding:2rem;color:var(--text-muted);display:none;">
+        No plays recorded yet. Add your first play above.
+    </div>
+</div>
+
+<style>
+    .form-input {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        padding: 0.4rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    .form-input:focus { border-color: var(--accent); outline: none; }
+    .hit-yes { color: var(--green); font-weight: 600; }
+    .hit-no { color: var(--text-muted); }
+    .tab-btn.active { background: var(--accent); color: white; }
+    .delete-btn {
+        background: none; border: none; color: var(--text-muted);
+        cursor: pointer; font-size: 0.8rem; padding: 0.25rem 0.5rem;
+    }
+    .delete-btn:hover { color: var(--red); }
+</style>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentFilter = 'all';
+
+function updateDigitFields() {
+    const game = document.getElementById('f-game').value;
+    document.getElementById('d4-wrapper').style.display = game === 'daily4' ? '' : 'none';
+}
+
+async function addPlay(e) {
+    e.preventDefault();
+    const game = document.getElementById('f-game').value;
+    const body = {
+        game_type: game,
+        play_type: document.getElementById('f-play-type').value,
+        digit_1: parseInt(document.getElementById('f-d1').value),
+        digit_2: parseInt(document.getElementById('f-d2').value),
+        digit_3: parseInt(document.getElementById('f-d3').value),
+        digit_4: game === 'daily4' ? parseInt(document.getElementById('f-d4').value) : null,
+        target_draw_date: document.getElementById('f-date').value,
+        target_draw_time: document.getElementById('f-time').value,
+        amount_wagered: parseFloat(document.getElementById('f-wager').value),
+    };
+
+    const resp = await fetch('/api/numbers-played/', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body),
+    });
+
+    const msg = document.getElementById('form-msg');
+    if (resp.ok) {
+        const data = await resp.json();
+        const hitInfo = data.scored_at
+            ? (data.straight_hit ? ' — STRAIGHT HIT!' : data.box_hit ? ' — BOX HIT!' : ' — No match')
+            : ' — Awaiting draw results';
+        msg.innerHTML = `<span style="color:var(--green)">Added: ${data.digits.join('-')} (${data.play_type})${hitInfo}</span>`;
+        loadPlays();
+        loadAccuracy();
+    } else {
+        const err = await resp.json();
+        msg.innerHTML = `<span style="color:var(--red)">${err.detail || 'Error adding play'}</span>`;
+    }
+}
+
+async function scoreAll() {
+    const resp = await fetch('/api/numbers-played/score-all', {method: 'POST'});
+    if (resp.ok) {
+        const data = await resp.json();
+        alert(`Scored ${data.scored} plays. ${data.remaining_unscored} still awaiting results.`);
+        loadPlays();
+        loadAccuracy();
+    }
+}
+
+async function deletePlay(id) {
+    if (!confirm('Delete this play?')) return;
+    await fetch(`/api/numbers-played/${id}`, {method: 'DELETE'});
+    loadPlays();
+    loadAccuracy();
+}
+
+function filterPlays(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadPlays();
+    loadAccuracy();
+}
+
+async function loadPlays() {
+    let url = '/api/numbers-played/?limit=100';
+    if (currentFilter !== 'all') url += `&game_type=${currentFilter}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    const tbody = document.getElementById('plays-body');
+    const empty = document.getElementById('plays-empty');
+
+    if (!data.plays.length) {
+        tbody.innerHTML = '';
+        empty.style.display = '';
+        return;
+    }
+    empty.style.display = 'none';
+
+    tbody.innerHTML = data.plays.map(p => `
+        <tr>
+            <td>${p.target_draw_date}</td>
+            <td><span class="badge ${p.target_draw_time === 'midday' ? 'badge-midday' : 'badge-evening'}">${p.target_draw_time}</span></td>
+            <td>${p.game_type === 'daily3' ? 'D3' : 'D4'}</td>
+            <td>${p.digits.map(d => `<span class="digit-ball small">${d}</span>`).join('')}</td>
+            <td>${p.play_type}</td>
+            <td>$${p.amount_wagered.toFixed(2)}</td>
+            <td>${p.straight_hit === null ? '—' : p.straight_hit ? '<span class="hit-yes">YES</span>' : '<span class="hit-no">no</span>'}</td>
+            <td>${p.box_hit === null ? '—' : p.box_hit ? '<span class="hit-yes">YES</span>' : '<span class="hit-no">no</span>'}</td>
+            <td>${p.amount_won === null ? '—' : p.amount_won > 0 ? `<span class="hit-yes">$${p.amount_won.toFixed(2)}</span>` : '$0'}</td>
+            <td><button class="delete-btn" onclick="deletePlay(${p.id})">x</button></td>
+        </tr>
+    `).join('');
+}
+
+async function loadAccuracy() {
+    let url = '/api/numbers-played/accuracy';
+    if (currentFilter !== 'all') url += `?game_type=${currentFilter}`;
+    const resp = await fetch(url);
+    const s = await resp.json();
+
+    document.getElementById('stat-total').textContent = s.total_plays;
+    document.getElementById('stat-straight').textContent = s.straight_hits;
+    document.getElementById('stat-straight-rate').textContent = s.total_plays ? `${s.straight_hit_rate}%` : '';
+    document.getElementById('stat-box').textContent = s.box_hits;
+    document.getElementById('stat-box-rate').textContent = s.total_plays ? `${s.box_hit_rate}%` : '';
+
+    const profitEl = document.getElementById('stat-profit');
+    profitEl.textContent = s.total_plays ? `$${s.net_profit.toFixed(2)}` : '-';
+    profitEl.style.color = s.net_profit >= 0 ? 'var(--green)' : 'var(--red)';
+    document.getElementById('stat-roi').textContent = s.total_plays ? `ROI: ${s.roi_percent}%` : '';
+
+    document.getElementById('stat-best-streak').textContent = s.best_streak;
+    document.getElementById('stat-current-streak').textContent = s.current_streak;
+
+    const byGame = document.getElementById('stat-by-game');
+    const parts = [];
+    for (const [gt, v] of Object.entries(s.by_game_type || {})) {
+        parts.push(`<strong>${gt === 'daily3' ? 'D3' : 'D4'}:</strong> ${v.plays} plays, ${v.straight_hits}S/${v.box_hits}B, $${v.won.toFixed(0)} won`);
+    }
+    byGame.innerHTML = parts.join(' &nbsp;|&nbsp; ') || '<span style="color:var(--text-muted)">No scored plays yet</span>';
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+    updateDigitFields();
+    document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+    loadPlays();
+    loadAccuracy();
+});
+</script>
+{% endblock %}

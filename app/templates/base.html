@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="aurum">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Aurum — Lottery Intelligence{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        /* ══════════════════════════════════════════════════════════
+           THEME: AURUM — Espresso + Burnished Gold + Copper
+           ══════════════════════════════════════════════════════════ */
+        [data-theme="aurum"] {
+            --bg: #0F0B08;
+            --bg-card: rgba(22, 16, 10, 0.85);
+            --bg-hover: rgba(32, 24, 14, 0.9);
+            --border: rgba(212, 162, 76, 0.12);
+            --border-active: rgba(212, 162, 76, 0.35);
+            --text: #F2E8D5;
+            --text-muted: #A89272;
+            --text-dim: #6B5F4D;
+            --accent: #D4A24C;
+            --accent-hover: #E0B35E;
+            --accent-secondary: #B86E3A;
+            --accent-tertiary: #6B1D2A;
+            --green: #5CB87A;
+            --red: #C45555;
+            --yellow: #D4A24C;
+            --orange: #B86E3A;
+            --digit-bg: linear-gradient(135deg, #D4A24C, #B86E3A);
+            --digit-text: #0F0B08;
+            --badge-midday-bg: rgba(212,162,76,0.15);
+            --badge-midday-text: #D4A24C;
+            --badge-evening-bg: rgba(107,29,42,0.2);
+            --badge-evening-text: #E08888;
+            --sidebar-bg: rgba(18, 12, 8, 0.95);
+            --hero-gradient: radial-gradient(ellipse at 30% 20%, rgba(212,162,76,0.08), transparent 50%),
+                             radial-gradient(ellipse at 70% 80%, rgba(107,29,42,0.06), transparent 50%);
+            --brand-name: "Aurum";
+            --brand-letter: "A";
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           THEME: FORTUNA — Obsidian Plum + Amber + Rose Gold
+           ══════════════════════════════════════════════════════════ */
+        [data-theme="fortuna"] {
+            --bg: #0D0810;
+            --bg-card: rgba(18, 10, 24, 0.85);
+            --bg-hover: rgba(28, 16, 36, 0.9);
+            --border: rgba(232, 168, 48, 0.12);
+            --border-active: rgba(232, 168, 48, 0.35);
+            --text: #F5ECD8;
+            --text-muted: #B09880;
+            --text-dim: #70605A;
+            --accent: #E8A830;
+            --accent-hover: #F0BA48;
+            --accent-secondary: #C27854;
+            --accent-tertiary: #7A2D50;
+            --green: #5CB87A;
+            --red: #D45555;
+            --yellow: #E8A830;
+            --orange: #C27854;
+            --digit-bg: linear-gradient(135deg, #E8A830, #C27854);
+            --digit-text: #0D0810;
+            --badge-midday-bg: rgba(232,168,48,0.15);
+            --badge-midday-text: #E8A830;
+            --badge-evening-bg: rgba(122,45,80,0.25);
+            --badge-evening-text: #D88AAA;
+            --sidebar-bg: rgba(14, 8, 18, 0.95);
+            --hero-gradient: radial-gradient(ellipse at 30% 20%, rgba(122,45,80,0.1), transparent 50%),
+                             radial-gradient(ellipse at 70% 80%, rgba(232,168,48,0.05), transparent 50%);
+            --brand-name: "Fortuna";
+            --brand-letter: "F";
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           THEME: ORACULO — Volcanic Ash + Terracotta + Sage
+           ══════════════════════════════════════════════════════════ */
+        [data-theme="oraculo"] {
+            --bg: #121210;
+            --bg-card: rgba(20, 18, 16, 0.85);
+            --bg-hover: rgba(30, 26, 22, 0.9);
+            --border: rgba(200, 90, 54, 0.12);
+            --border-active: rgba(200, 90, 54, 0.35);
+            --text: #E8DCC8;
+            --text-muted: #A09480;
+            --text-dim: #686058;
+            --accent: #C85A36;
+            --accent-hover: #DA6E48;
+            --accent-secondary: #8BA67A;
+            --accent-tertiary: #B8944A;
+            --green: #8BA67A;
+            --red: #C85A36;
+            --yellow: #B8944A;
+            --orange: #C85A36;
+            --digit-bg: linear-gradient(135deg, #C85A36, #B8944A);
+            --digit-text: #121210;
+            --badge-midday-bg: rgba(184,148,74,0.15);
+            --badge-midday-text: #B8944A;
+            --badge-evening-bg: rgba(200,90,54,0.15);
+            --badge-evening-text: #DA6E48;
+            --sidebar-bg: rgba(16, 14, 12, 0.95);
+            --hero-gradient: radial-gradient(ellipse at 30% 20%, rgba(200,90,54,0.06), transparent 50%),
+                             radial-gradient(ellipse at 70% 80%, rgba(139,166,122,0.04), transparent 50%);
+            --brand-name: "Oraculo";
+            --brand-letter: "O";
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           BASE STYLES (theme-aware via CSS variables)
+           ══════════════════════════════════════════════════════════ */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .layout { display: flex; min-height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 240px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem 0;
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar-logo {
+            padding: 0 1.5rem 1.5rem;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--accent);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .brand-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px; height: 34px;
+            background: var(--digit-bg);
+            color: var(--digit-text);
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .sidebar-nav { flex: 1; }
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.15s;
+        }
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            color: var(--text);
+            background: var(--bg-hover);
+        }
+        .sidebar-nav a.active { border-left: 3px solid var(--accent); }
+
+        .sidebar-footer {
+            padding: 0.75rem 1.5rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        /* ── Theme Switcher ── */
+        .theme-switcher {
+            padding: 0.5rem 1.5rem 0.75rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 0.4rem;
+            align-items: center;
+        }
+        .theme-switcher label {
+            font-size: 0.65rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-right: 0.25rem;
+        }
+        .theme-dot {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .theme-dot:hover { transform: scale(1.2); }
+        .theme-dot.active { border-color: var(--text); box-shadow: 0 0 6px rgba(255,255,255,0.15); }
+        .theme-dot[data-theme="aurum"] { background: #D4A24C; }
+        .theme-dot[data-theme="fortuna"] { background: #E8A830; }
+        .theme-dot[data-theme="oraculo"] { background: #C85A36; }
+        .auto-rotate-btn {
+            margin-left: auto;
+            background: none; border: 1px solid var(--border);
+            color: var(--text-dim); font-size: 0.6rem;
+            padding: 0.15rem 0.4rem; border-radius: 4px;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .auto-rotate-btn.active { color: var(--accent); border-color: var(--accent); }
+
+        /* ── Main Content ── */
+        .main-content {
+            flex: 1;
+            margin-left: 240px;
+            padding: 2rem;
+            background: var(--hero-gradient);
+            min-height: 100vh;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .page-header h1 { font-size: 1.5rem; font-weight: 600; }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(8px);
+        }
+        .card-title {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+        }
+
+        /* ── Grids ── */
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+
+        /* ── Digit Balls ── */
+        .digit-ball {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px; height: 48px;
+            border-radius: 50%;
+            background: var(--digit-bg);
+            color: var(--digit-text);
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0 0.25rem;
+        }
+        .digit-ball.small { width: 36px; height: 36px; font-size: 1rem; }
+
+        /* ── Draw Results ── */
+        .draw-result {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .draw-result:last-child { border-bottom: none; }
+        .draw-meta { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* ── Badges ── */
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .badge-midday { background: var(--badge-midday-bg); color: var(--badge-midday-text); }
+        .badge-evening { background: var(--badge-evening-bg); color: var(--badge-evening-text); }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .btn-primary { background: var(--accent); color: var(--digit-text); }
+        .btn-primary:hover { background: var(--accent-hover); }
+        .btn-outline {
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover { background: var(--bg-hover); color: var(--text); }
+
+        /* ── Stats ── */
+        .stat-value { font-size: 2rem; font-weight: 700; }
+        .stat-label { font-size: 0.8rem; color: var(--text-muted); }
+
+        /* ── Tables ── */
+        table { width: 100%; border-collapse: collapse; }
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        th {
+            color: var(--text-dim);
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        /* ── Tabs ── */
+        .tab-bar {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 1.5rem;
+        }
+        .tab-bar button {
+            background: none;
+            border: none;
+            padding: 0.75rem 1.25rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .tab-bar button.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* ── Confidence Bar ── */
+        .confidence-bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 0.5rem; }
+        .confidence-fill { height: 100%; background: var(--digit-bg); border-radius: 3px; }
+
+        /* ── Mobile Header ── */
+        .mobile-header {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 56px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid var(--border);
+            z-index: 1000;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            backdrop-filter: blur(12px);
+        }
+        .mobile-header .brand-mark { width: 30px; height: 30px; font-size: 0.95rem; }
+        .mobile-header-brand { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--accent); font-size: 1rem; }
+        .hamburger {
+            background: none; border: none; color: var(--text-muted);
+            font-size: 1.4rem; cursor: pointer; padding: 0.5rem;
+            line-height: 1;
+        }
+        .mobile-theme-dots { display: flex; gap: 0.3rem; align-items: center; }
+        .mobile-theme-dots .theme-dot { width: 14px; height: 14px; }
+
+        /* ── Mobile Sidebar Overlay ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1001;
+            backdrop-filter: blur(2px);
+        }
+        .sidebar-overlay.open { display: block; }
+        .sidebar.mobile-open {
+            transform: translateX(0) !important;
+            z-index: 1002;
+        }
+
+        /* ── Bottom Nav ── */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: 64px;
+            background: var(--sidebar-bg);
+            border-top: 1px solid var(--border);
+            z-index: 999;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 0.25rem;
+            backdrop-filter: blur(12px);
+        }
+        .bottom-nav a {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.2rem;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.6rem;
+            padding: 0.4rem 0.5rem;
+            border-radius: 8px;
+            transition: color 0.15s;
+            letter-spacing: 0.02em;
+        }
+        .bottom-nav a.active { color: var(--accent); }
+        .bottom-nav a .nav-icon { font-size: 1.2rem; line-height: 1; }
+
+        /* ── Responsive Tables ── */
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -1rem;
+            padding: 0 1rem;
+        }
+
+        /* ══════ RESPONSIVE BREAKPOINTS ══════ */
+
+        @media (max-width: 1024px) {
+            .grid-4 { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .mobile-header { display: flex; }
+            .bottom-nav { display: flex; }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 1002;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+                padding-top: calc(56px + 1rem);
+                padding-bottom: calc(64px + 1rem);
+            }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; }
+            .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+            .page-header { margin-bottom: 1.25rem; }
+            .page-header h1 { font-size: 1.25rem; }
+            .card { padding: 1rem; margin-bottom: 1rem; border-radius: 10px; }
+            .card-title { font-size: 0.7rem; margin-bottom: 0.5rem; }
+            .stat-value { font-size: 1.6rem; }
+            .digit-ball { width: 40px; height: 40px; font-size: 1.1rem; margin: 0 0.15rem; }
+            .digit-ball.small { width: 32px; height: 32px; font-size: 0.9rem; }
+            .btn { padding: 0.6rem 1rem; font-size: 0.8rem; }
+            th, td { padding: 0.5rem 0.4rem; font-size: 0.78rem; }
+            th { font-size: 0.65rem; }
+            .tab-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap; }
+            .tab-bar button { padding: 0.6rem 0.9rem; font-size: 0.8rem; white-space: nowrap; }
+            .draw-result { gap: 0.5rem; padding: 0.6rem 0; }
+            .draw-meta { font-size: 0.7rem; }
+            .badge { font-size: 0.65rem; padding: 0.15rem 0.45rem; }
+        }
+
+        @media (max-width: 420px) {
+            .grid-4 { grid-template-columns: 1fr; }
+            .main-content { padding: 0.75rem; padding-top: calc(56px + 0.75rem); padding-bottom: calc(64px + 0.75rem); }
+            .digit-ball { width: 36px; height: 36px; font-size: 1rem; }
+            .digit-ball.small { width: 28px; height: 28px; font-size: 0.85rem; }
+        }
+
+        /* ── Smooth theme transition ── */
+        body, .sidebar, .card, .main-content, .digit-ball, .btn, .badge {
+            transition: background 0.4s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+
+        /* ══════════════════════════════════════════════════════════
+           INSTRUCTIONAL OVERLAY + CHEATSHEET
+           ══════════════════════════════════════════════════════════ */
+
+        /* ── Overlay backdrop ── */
+        .tour-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.75);
+            z-index: 2000;
+            backdrop-filter: blur(3px);
+        }
+        .tour-overlay.active { display: block; }
+
+        /* ── Spotlight cutout ── */
+        .tour-spotlight {
+            display: none;
+            position: fixed;
+            z-index: 2001;
+            border-radius: 10px;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.72);
+            pointer-events: none;
+            transition: all 0.4s ease;
+        }
+
+        /* ── Tooltip ── */
+        .tour-tooltip {
+            position: fixed;
+            z-index: 2002;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            max-width: 360px;
+            width: 90vw;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+            transition: all 0.35s ease;
+        }
+        .tour-tooltip-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: var(--accent);
+            margin-bottom: 0.4rem;
+        }
+        .tour-tooltip-body {
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin-bottom: 1rem;
+        }
+        .tour-tooltip-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tour-step-count {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .tour-btns { display: flex; gap: 0.5rem; }
+        .tour-btn {
+            padding: 0.4rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            font-family: 'Space Grotesk', sans-serif;
+            transition: all 0.15s;
+        }
+        .tour-btn-skip { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+        .tour-btn-skip:hover { color: var(--text-muted); }
+        .tour-btn-next { background: var(--accent); color: var(--digit-text); }
+        .tour-btn-next:hover { opacity: 0.9; }
+
+        /* ── Progress dots ── */
+        .tour-dots {
+            display: flex;
+            gap: 0.35rem;
+            justify-content: center;
+            margin-top: 0.75rem;
+        }
+        .tour-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--border);
+            transition: all 0.3s;
+        }
+        .tour-dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
+        .tour-dot.done { background: var(--accent); opacity: 0.5; }
+
+        /* ── Help toggle button ── */
+        .help-toggle {
+            position: fixed;
+            top: 1rem; right: 1.25rem;
+            width: 40px; height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: var(--digit-text);
+            border: none;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 1500;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+            transition: all 0.2s;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .help-toggle:hover { transform: scale(1.1); }
+        @media (max-width: 768px) {
+            .help-toggle { top: 0.6rem; right: 3.5rem; }
+        }
+
+        /* ── Cheatsheet Modal ── */
+        .cheatsheet-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            backdrop-filter: blur(3px);
+            justify-content: center;
+            align-items: center;
+        }
+        .cheatsheet-overlay.open { display: flex; }
+        .cheatsheet {
+            background: var(--bg);
+            border: 1px solid var(--border-active);
+            border-radius: 14px;
+            max-width: 720px;
+            width: 92vw;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 2rem;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .cheatsheet-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        .cheatsheet-header h2 {
+            font-size: 1.3rem;
+            color: var(--accent);
+        }
+        .cheatsheet-close {
+            background: none; border: none;
+            color: var(--text-dim); font-size: 1.5rem;
+            cursor: pointer; line-height: 1; padding: 0.25rem;
+        }
+        .cheatsheet-close:hover { color: var(--text); }
+        .cs-section {
+            margin-bottom: 1.5rem;
+        }
+        .cs-section h3 {
+            font-size: 0.85rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.4rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .cs-row {
+            display: flex;
+            gap: 1rem;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            align-items: flex-start;
+        }
+        .cs-row:last-child { border-bottom: none; }
+        .cs-label {
+            font-weight: 600;
+            font-size: 0.82rem;
+            color: var(--text);
+            min-width: 130px;
+            flex-shrink: 0;
+        }
+        .cs-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        .cs-kbd {
+            display: inline-block;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.1rem 0.4rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--accent);
+        }
+        .cs-start-tour {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            margin-top: 1rem;
+            background: var(--accent);
+            color: var(--digit-text);
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .cs-start-tour:hover { opacity: 0.9; }
+        @media (max-width: 768px) {
+            .cheatsheet { padding: 1.25rem; }
+            .cs-row { flex-direction: column; gap: 0.25rem; }
+            .cs-label { min-width: auto; }
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <div class="mobile-header-brand">
+            <span class="brand-mark" id="mobile-brand-letter">A</span>
+            <span id="mobile-brand-name">Aurum</span>
+        </div>
+        <div class="mobile-theme-dots">
+            <div class="theme-dot" data-theme="aurum" onclick="setTheme('aurum')" style="width:14px;height:14px;"></div>
+            <div class="theme-dot" data-theme="fortuna" onclick="setTheme('fortuna')" style="width:14px;height:14px;"></div>
+            <div class="theme-dot" data-theme="oraculo" onclick="setTheme('oraculo')" style="width:14px;height:14px;"></div>
+        </div>
+        <button class="hamburger" onclick="toggleMobileMenu()" id="hamburger-btn">&#9776;</button>
+    </header>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
+    <div class="layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-logo">
+                <span class="brand-mark" id="brand-letter">A</span>
+                <span id="brand-name">Aurum</span>
+            </div>
+            <div class="sidebar-nav">
+                <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+                <a href="/analysis" class="{% if active_page == 'analysis' %}active{% endif %}">Analysis</a>
+                <a href="/predictions" class="{% if active_page == 'predictions' %}active{% endif %}">Predictions</a>
+                <a href="/backtest" class="{% if active_page == 'backtest' %}active{% endif %}">Backtesting</a>
+                <a href="/numbers-played" class="{% if active_page == 'numbers_played' %}active{% endif %}">Numbers Played</a>
+                <a href="/performance" class="{% if active_page == 'performance' %}active{% endif %}">Performance</a>
+                <a href="/settings" class="{% if active_page == 'settings' %}active{% endif %}">Settings</a>
+            </div>
+            <div class="theme-switcher">
+                <label>Theme</label>
+                <div class="theme-dot active" data-theme="aurum" onclick="setTheme('aurum')" title="Aurum"></div>
+                <div class="theme-dot" data-theme="fortuna" onclick="setTheme('fortuna')" title="Fortuna"></div>
+                <div class="theme-dot" data-theme="oraculo" onclick="setTheme('oraculo')" title="Oraculo"></div>
+                <button class="auto-rotate-btn" id="rotate-btn" onclick="toggleRotation()" title="Auto-rotate themes">Auto</button>
+            </div>
+            <div style="padding:0.5rem 1.5rem;">
+                <a href="#" onclick="openHelp();return false;" style="color:var(--text-muted);text-decoration:none;font-size:0.9rem;display:flex;align-items:center;gap:0.5rem;">
+                    <span style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--digit-text);font-size:0.75rem;font-weight:700;">?</span>
+                    Help &amp; Cheatsheet
+                </a>
+            </div>
+            <div class="sidebar-footer" id="user-info">
+                <a href="/login" style="color: var(--accent); text-decoration: none;">Login / Register</a>
+            </div>
+        </nav>
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Bottom Nav (mobile) -->
+    <nav class="bottom-nav">
+        <a href="/" class="{% if active_page == 'dashboard' %}active{% endif %}">
+            <span class="nav-icon">&#9673;</span>Home
+        </a>
+        <a href="/analysis" class="{% if active_page == 'analysis' %}active{% endif %}">
+            <span class="nav-icon">&#9632;</span>Analysis
+        </a>
+        <a href="/predictions" class="{% if active_page == 'predictions' %}active{% endif %}">
+            <span class="nav-icon">&#9733;</span>Predict
+        </a>
+        <a href="/numbers-played" class="{% if active_page == 'numbers_played' %}active{% endif %}">
+            <span class="nav-icon">&#9862;</span>Played
+        </a>
+        <a href="/backtest" class="{% if active_page == 'backtest' %}active{% endif %}">
+            <span class="nav-icon">&#8635;</span>Backtest
+        </a>
+    </nav>
+
+    <script>
+        const THEMES = ['aurum', 'fortuna', 'oraculo'];
+        const BRAND = {
+            aurum:   { name: 'Aurum',   letter: 'A' },
+            fortuna: { name: 'Fortuna', letter: 'F' },
+            oraculo: { name: 'Oraculo', letter: 'O' },
+        };
+        let rotationInterval = null;
+
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.getElementById('brand-letter').textContent = BRAND[theme].letter;
+            document.getElementById('brand-name').textContent = BRAND[theme].name;
+            // Sync mobile header
+            const mbl = document.getElementById('mobile-brand-letter');
+            const mbn = document.getElementById('mobile-brand-name');
+            if (mbl) mbl.textContent = BRAND[theme].letter;
+            if (mbn) mbn.textContent = BRAND[theme].name;
+            document.querySelectorAll('.theme-dot').forEach(d => {
+                d.classList.toggle('active', d.dataset.theme === theme);
+            });
+            localStorage.setItem('lottery-theme', theme);
+        }
+
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            const isOpen = sidebar.classList.contains('mobile-open');
+            if (isOpen) {
+                sidebar.classList.remove('mobile-open');
+                overlay.classList.remove('open');
+            } else {
+                sidebar.classList.add('mobile-open');
+                overlay.classList.add('open');
+            }
+        }
+
+        function toggleRotation() {
+            const btn = document.getElementById('rotate-btn');
+            if (rotationInterval) {
+                clearInterval(rotationInterval);
+                rotationInterval = null;
+                btn.classList.remove('active');
+                localStorage.setItem('lottery-auto-rotate', 'off');
+            } else {
+                startRotation();
+                btn.classList.add('active');
+                localStorage.setItem('lottery-auto-rotate', 'on');
+            }
+        }
+
+        function startRotation() {
+            rotationInterval = setInterval(() => {
+                const current = document.documentElement.getAttribute('data-theme');
+                const idx = THEMES.indexOf(current);
+                const next = THEMES[(idx + 1) % THEMES.length];
+                setTheme(next);
+            }, 30000); // rotate every 30 seconds
+        }
+
+        // Init theme from localStorage
+        const saved = localStorage.getItem('lottery-theme');
+        if (saved && THEMES.includes(saved)) setTheme(saved);
+
+        const autoRotate = localStorage.getItem('lottery-auto-rotate');
+        if (autoRotate === 'on') {
+            startRotation();
+            document.getElementById('rotate-btn').classList.add('active');
+        }
+
+        // Auth check
+        const token = localStorage.getItem('access_token');
+        if (token) {
+            fetch('/api/auth/me', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).then(r => {
+                if (r.ok) return r.json();
+                localStorage.removeItem('access_token');
+                localStorage.removeItem('refresh_token');
+                return null;
+            }).then(user => {
+                if (user) {
+                    document.getElementById('user-info').innerHTML =
+                        `<span>${user.email}</span><br>` +
+                        `<a href="#" onclick="logout()" style="color:var(--red);text-decoration:none;font-size:0.75rem;">Logout</a>`;
+                }
+            }).catch(() => {});
+        }
+        function logout() {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('refresh_token');
+            window.location.href = '/login';
+        }
+    </script>
+    <!-- Help button removed — now in sidebar menu -->
+
+    <!-- ══════ Welcome Modal (first visit only, once across all tabs) ══════ -->
+    <div class="cheatsheet-overlay" id="welcome-overlay" onclick="if(event.target===this)dismissWelcome()">
+        <div class="cheatsheet" style="max-width:480px;">
+            <div class="cheatsheet-header">
+                <h2>Welcome to the Lottery Predictor</h2>
+                <button class="cheatsheet-close" onclick="dismissWelcome()">&times;</button>
+            </div>
+            <div style="font-size:0.88rem;color:var(--text-muted);line-height:1.6;margin-bottom:1.25rem;">
+                This app uses statistical analysis and machine learning to predict CA Lottery Daily 3 and Daily 4 numbers. You can analyze historical patterns, generate predictions, track your own picks, and backtest strategies.
+            </div>
+            <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;">
+                <button class="cs-start-tour" style="flex:1" onclick="dismissWelcome();startPageTour('overview');">Take the Tour</button>
+                <button class="cs-start-tour" style="flex:1;background:var(--bg-hover);color:var(--text);" onclick="dismissWelcome();openHelp();">View Cheatsheet</button>
+            </div>
+            <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.78rem;color:var(--text-dim);cursor:pointer;">
+                <input type="checkbox" id="welcome-dont-show" style="accent-color:var(--accent);width:16px;height:16px;">
+                Don't show this again
+            </label>
+        </div>
+    </div>
+
+    <!-- ══════ Tour Overlay ══════ -->
+    <div class="tour-overlay" id="tour-overlay" style="display:none;"></div>
+    <div class="tour-spotlight" id="tour-spotlight" style="display:none;"></div>
+    <div class="tour-tooltip" id="tour-tooltip" style="display:none;">
+        <div class="tour-tooltip-title" id="tour-title"></div>
+        <div class="tour-tooltip-body" id="tour-body"></div>
+        <div class="tour-dots" id="tour-dots"></div>
+        <div class="tour-tooltip-footer">
+            <span class="tour-step-count" id="tour-count"></span>
+            <div class="tour-btns">
+                <button class="tour-btn tour-btn-skip" onclick="endTour()">End Tour</button>
+                <button class="tour-btn tour-btn-next" id="tour-next-btn" onclick="nextTourStep()">Next</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════ Tabbed Cheatsheet Modal ══════ -->
+    <div class="cheatsheet-overlay" id="cheatsheet-overlay" onclick="if(event.target===this)closeCheatsheet()">
+        <div class="cheatsheet">
+            <div class="cheatsheet-header">
+                <h2>Feature Cheatsheet</h2>
+                <button class="cheatsheet-close" onclick="closeCheatsheet()">&times;</button>
+            </div>
+
+            <!-- Tab bar -->
+            <div class="tab-bar" id="cs-tabs" style="margin-bottom:1rem;overflow-x:auto;">
+                <button class="active" onclick="csTab('dashboard',this)">Dashboard</button>
+                <button onclick="csTab('analysis',this)">Analysis</button>
+                <button onclick="csTab('predictions',this)">Predictions</button>
+                <button onclick="csTab('played',this)">Played</button>
+                <button onclick="csTab('backtest',this)">Backtest</button>
+                <button onclick="csTab('performance',this)">Performance</button>
+                <button onclick="csTab('strategies',this)">Strategies</button>
+                <button onclick="csTab('ui',this)">UI / Themes</button>
+            </div>
+
+            <!-- Tab panels -->
+            <div class="cs-panel" id="cs-dashboard">
+                <div class="cs-row"><div class="cs-label">Draw History</div><div class="cs-desc">Latest Daily 3 and Daily 4 results with digit balls, draw numbers, and midday/evening badges.</div></div>
+                <div class="cs-row"><div class="cs-label">Frequency Chart</div><div class="cs-desc">Bar chart of digit frequency (0-9) over the last 100 Daily 3 draws. Quick visual for hot numbers.</div></div>
+                <div class="cs-row"><div class="cs-label">Refresh Data</div><div class="cs-desc">Pulls latest draws from the CA Lottery API. Click anytime to stay current.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('dashboard');">Walkthrough: Dashboard</button>
+            </div>
+            <div class="cs-panel" id="cs-analysis" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Digit Frequency</div><div class="cs-desc">Per-position frequency of each digit. Green = above expected (10%), red = below. Adjust window size (50/100/200/All).</div></div>
+                <div class="cs-row"><div class="cs-label">Hot &amp; Cold</div><div class="cs-desc">Digits significantly above (hot) or below (cold) expected frequency, based on standard deviation.</div></div>
+                <div class="cs-row"><div class="cs-label">Gap Analysis</div><div class="cs-desc">Draws since each digit last appeared per position. "Overdue" = current gap exceeds average.</div></div>
+                <div class="cs-row"><div class="cs-label">Pair Heatmap</div><div class="cs-desc">10x10 grid of adjacent digit pair frequencies. Darker = more frequent. Hover for count.</div></div>
+                <div class="cs-row"><div class="cs-label">Sum Distribution</div><div class="cs-desc">Histogram of digit sums. Yellow line = mean. Useful for filtering unlikely combinations.</div></div>
+                <div class="cs-row"><div class="cs-label">Trends</div><div class="cs-desc">Rolling average digit value per position over time as a line chart.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('analysis');">Walkthrough: Analysis</button>
+            </div>
+            <div class="cs-panel" id="cs-predictions" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Ensemble Prediction</div><div class="cs-desc">Primary prediction combining all strategies via calibrated weights. Shows digits, confidence %, play type, and expected value.</div></div>
+                <div class="cs-row"><div class="cs-label">Strategy Breakdown</div><div class="cs-desc">Expand to see each algorithm's individual prediction.</div></div>
+                <div class="cs-row"><div class="cs-label">Play Types</div><div class="cs-desc"><strong>Straight</strong> = exact order. <strong>Box</strong> = any order. <strong>Straight/Box</strong> = split bet. <strong>Combo</strong> = all permutations.</div></div>
+                <div class="cs-row"><div class="cs-label">Confidence</div><div class="cs-desc">Based on probability distribution entropy. Low entropy = higher confidence. Range: 3-8%.</div></div>
+                <div class="cs-row"><div class="cs-label">Expected Value</div><div class="cs-desc">Estimated return per $1 wagered. Positive = the model thinks this is a +EV bet.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('predictions');">Walkthrough: Predictions</button>
+            </div>
+            <div class="cs-panel" id="cs-played" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Record Picks</div><div class="cs-desc">Enter digits, date, draw time, play type, and wager. Scored automatically against real results.</div></div>
+                <div class="cs-row"><div class="cs-label">Score All</div><div class="cs-desc">Batch-score unscored entries after new draws are fetched.</div></div>
+                <div class="cs-row"><div class="cs-label">Accuracy Stats</div><div class="cs-desc">Hit rates, net profit, ROI, streaks. Broken down by game and play type. 18-month retention.</div></div>
+                <div class="cs-row"><div class="cs-label">Filters</div><div class="cs-desc">Filter by All / Daily 3 / Daily 4 to see game-specific accuracy.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('played');">Walkthrough: Numbers Played</button>
+            </div>
+            <div class="cs-panel" id="cs-backtest" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Walk-Forward</div><div class="cs-desc">For each past draw, the model uses only prior data. No future data leakage.</div></div>
+                <div class="cs-row"><div class="cs-label">Training Window</div><div class="cs-desc">Past draws used to train before each prediction. Larger = more data, slower adaptation. Default: 200.</div></div>
+                <div class="cs-row"><div class="cs-label">Metrics</div><div class="cs-desc">Hit rates, Sharpe ratio, calibration error, ROI, and comparison to random baseline.</div></div>
+                <div class="cs-row"><div class="cs-label">Compare</div><div class="cs-desc">Select multiple runs to compare strategies side-by-side with charts and significance tests.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('backtest');">Walkthrough: Backtesting</button>
+            </div>
+            <div class="cs-panel" id="cs-performance" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Ensemble Weights</div><div class="cs-desc">How much the system trusts each strategy. Auto-adjusts based on accuracy. Floor: 0.125%, cap: 50%.</div></div>
+                <div class="cs-row"><div class="cs-label">Degradation Alerts</div><div class="cs-desc">Warns when 7-day performance drops below 90-day baseline. WARNING at z&lt;-2, CRITICAL at z&lt;-3.</div></div>
+                <div class="cs-row"><div class="cs-label">Calibration Curve</div><div class="cs-desc">Predicted confidence vs actual hit rate. Well-calibrated = follows the diagonal.</div></div>
+                <div class="cs-row"><div class="cs-label">Recalibrate</div><div class="cs-desc">Manually trigger weight recalculation. Normally runs weekly on Sunday.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('performance');">Walkthrough: Performance</button>
+            </div>
+            <div class="cs-panel" id="cs-strategies" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Frequency</div><div class="cs-desc">Most common digit per position over last N draws.</div></div>
+                <div class="cs-row"><div class="cs-label">Cold/Due</div><div class="cs-desc">Digits with longest gap since last appearance.</div></div>
+                <div class="cs-row"><div class="cs-label">Positional Trend</div><div class="cs-desc">Exponentially weighted moving average — recent draws count more.</div></div>
+                <div class="cs-row"><div class="cs-label">Pair Analysis</div><div class="cs-desc">Chains most frequent adjacent digit pairs across positions.</div></div>
+                <div class="cs-row"><div class="cs-label">Moving Average</div><div class="cs-desc">Rolling mean digit value per position, rounded.</div></div>
+                <div class="cs-row"><div class="cs-label">Random Forest</div><div class="cs-desc">ML model, 130+ features, 10-class classifiers per position. Needs 200+ draws.</div></div>
+                <div class="cs-row"><div class="cs-label">XGBoost</div><div class="cs-desc">Gradient-boosted trees, same features. Often better at nonlinear patterns.</div></div>
+                <div class="cs-row"><div class="cs-label">LSTM</div><div class="cs-desc">Deep learning on sequences of 50 draws. Needs 500+ draws. Retrains monthly.</div></div>
+            </div>
+            <div class="cs-panel" id="cs-ui" style="display:none;">
+                <div class="cs-row"><div class="cs-label">Theme Dots</div><div class="cs-desc">Sidebar (desktop) or header (mobile) — click dots to switch: <strong>Aurum</strong> (gold), <strong>Fortuna</strong> (amber), <strong>Oraculo</strong> (terracotta).</div></div>
+                <div class="cs-row"><div class="cs-label">Auto Rotate</div><div class="cs-desc">Sidebar "Auto" button cycles themes every 30 seconds. Persists across sessions.</div></div>
+                <div class="cs-row"><div class="cs-label">Help <span class="cs-kbd">?</span></div><div class="cs-desc">Floating button opens this cheatsheet. Launch page walkthroughs from each tab.</div></div>
+                <div class="cs-row"><div class="cs-label">Mobile</div><div class="cs-desc">Bottom navigation for quick access. Hamburger menu opens full sidebar with all options.</div></div>
+                <button class="cs-start-tour" onclick="closeCheatsheet();startPageTour('overview');">Walkthrough: Full App Tour</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ══════════════════════════════════════════════════════════
+    // CHEATSHEET TAB SWITCHING
+    // ══════════════════════════════════════════════════════════
+    function csTab(tab, btn) {
+        document.querySelectorAll('.cs-panel').forEach(p => p.style.display = 'none');
+        document.getElementById('cs-' + tab).style.display = '';
+        document.querySelectorAll('#cs-tabs button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    function openHelp() {
+        document.getElementById('cheatsheet-overlay').classList.add('open');
+    }
+    function closeCheatsheet() {
+        document.getElementById('cheatsheet-overlay').classList.remove('open');
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // WELCOME MODAL (once per browser, not per tab)
+    // ══════════════════════════════════════════════════════════
+    function showWelcome() {
+        // Use sessionStorage to prevent showing on every new tab in the same session
+        // Use localStorage 'lottery-welcome-dismissed' for permanent dismissal
+        if (localStorage.getItem('lottery-welcome-dismissed')) return;
+        if (sessionStorage.getItem('lottery-welcome-shown')) return;
+        sessionStorage.setItem('lottery-welcome-shown', 'true');
+        document.getElementById('welcome-overlay').classList.add('open');
+    }
+    function dismissWelcome() {
+        document.getElementById('welcome-overlay').classList.remove('open');
+        if (document.getElementById('welcome-dont-show').checked) {
+            localStorage.setItem('lottery-welcome-dismissed', 'true');
+        }
+    }
+    setTimeout(showWelcome, 800);
+
+    // ══════════════════════════════════════════════════════════
+    // PER-PAGE TOUR DEFINITIONS
+    // ══════════════════════════════════════════════════════════
+    const PAGE_TOURS = {
+        overview: [
+            { target: '.sidebar-logo', title: 'Brand & Theme', body: 'Your app identity. The colored dots below switch between Aurum, Fortuna, and Oraculo palettes. "Auto" rotates every 30s.', position: 'right' },
+            { target: '.sidebar-nav', title: 'Navigation', body: 'All pages: Dashboard (overview), Analysis (deep stats), Predictions (AI picks), Numbers Played (track bets), Backtesting (validate), Performance (monitor).', position: 'right' },
+            { target: '.page-header', title: 'Page Controls', body: 'Action buttons and filters live here — Refresh Data, Generate Predictions, Score All, game type selectors.', position: 'bottom' },
+            { target: '.card', title: 'Data Cards', body: 'Key info in cards: stat cards for metrics, draw cards with digit balls and badges, chart cards with visualizations.', position: 'bottom' },
+            { target: '.help-toggle', title: 'Help Anytime', body: 'Click ? to open the cheatsheet. Each tab has a "Walkthrough" button for that page\'s guided tour.', position: 'left' },
+        ],
+        dashboard: [
+            { target: '.grid-4 .card:first-child, .grid .card:first-child, .card:first-child', title: 'Draw Counts', body: 'Total historical draws loaded for each game. These grow as you fetch more data.', position: 'bottom' },
+            { target: '.digit-ball', title: 'Latest Draw', body: 'The most recent draw result displayed as gradient digit balls. Midday/Evening badge shows the draw time.', position: 'bottom' },
+            { target: '.page-header .btn, .page-header button', title: 'Refresh Data', body: 'Fetches the latest draws from the CA Lottery API. Run this daily to stay current.', position: 'bottom' },
+            { target: 'canvas, .card:last-child', title: 'Frequency Chart', body: 'Digit frequency across the last 100 draws. Quick visual to spot hot and cold numbers.', position: 'top' },
+        ],
+        analysis: [
+            { target: '.tab-bar, .card:first-child', title: 'Game & Window Selectors', body: 'Switch between Daily 3 and Daily 4. Adjust the analysis window (50/100/200/All) to compare short vs long term.', position: 'bottom' },
+            { target: '.card', title: 'Analysis Sections', body: 'Frequency charts, hot/cold digits, gap analysis, pair heatmaps, sum distribution, and trend lines. Scroll down to explore each.', position: 'bottom' },
+        ],
+        predictions: [
+            { target: '.card:first-child, .card', title: 'Ensemble Prediction', body: 'The primary pick — combines all 8 strategies using calibrated weights. Shows digits, confidence, play type, and expected value.', position: 'bottom' },
+            { target: '.page-header .btn, .page-header button', title: 'Generate', body: 'Click to generate fresh predictions. Each strategy runs independently, then the ensemble combines them.', position: 'bottom' },
+        ],
+        played: [
+            { target: 'form, #add-form, .card:first-of-type', title: 'Record Your Picks', body: 'Enter the digits you played, select game/date/time/play type. The system auto-scores against real draw results.', position: 'bottom' },
+            { target: '#stat-cards, .grid-4:first-child, .card:first-child', title: 'Accuracy Dashboard', body: 'Hit rates, net profit, ROI, and streaks. Tracks your real betting performance over time.', position: 'bottom' },
+            { target: '.tab-btn, table', title: 'History & Filters', body: 'Filter by All/Daily 3/Daily 4. See every play with straight/box hit status and winnings.', position: 'bottom' },
+        ],
+        backtest: [
+            { target: 'form, .card:first-child', title: 'Configure Backtest', body: 'Select strategy, game type, training window size. Click run to walk-forward test against historical data.', position: 'bottom' },
+            { target: 'table, .card:nth-child(2)', title: 'Results & Comparison', body: 'Hit rates, Sharpe ratio, ROI. Select multiple runs to compare with charts and statistical significance tests.', position: 'bottom' },
+        ],
+        performance: [
+            { target: '.card:first-child, .card', title: 'Strategy Weights', body: 'Doughnut chart shows current ensemble weights. The system auto-adjusts weekly based on each strategy\'s accuracy.', position: 'bottom' },
+            { target: '.card:nth-child(2), .card', title: 'Performance Matrix', body: 'All strategies across all time windows (7d/30d/90d/180d/365d). Hit rates, calibration scores, and degradation alerts.', position: 'bottom' },
+        ],
+    };
+
+    // ══════════════════════════════════════════════════════════
+    // TOUR ENGINE
+    // ══════════════════════════════════════════════════════════
+    let tourSteps = [];
+    let tourStep = 0;
+    let tourActive = false;
+
+    function startPageTour(page) {
+        tourSteps = PAGE_TOURS[page] || PAGE_TOURS.overview;
+        tourStep = 0;
+        tourActive = true;
+        const overlay = document.getElementById('tour-overlay');
+        overlay.style.display = '';
+        overlay.classList.add('active');
+        showTourStep();
+    }
+
+    function endTour() {
+        tourActive = false;
+        const overlay = document.getElementById('tour-overlay');
+        overlay.classList.remove('active');
+        overlay.style.display = 'none';
+        document.getElementById('tour-tooltip').style.display = 'none';
+        document.getElementById('tour-spotlight').style.display = 'none';
+    }
+
+    function nextTourStep() {
+        tourStep++;
+        if (tourStep >= tourSteps.length) { endTour(); return; }
+        showTourStep();
+    }
+
+    function showTourStep() {
+        const step = tourSteps[tourStep];
+        // Try each comma-separated selector until one matches
+        const targets = step.target.split(',').map(s => s.trim());
+        let el = null;
+        for (const sel of targets) {
+            el = document.querySelector(sel);
+            if (el) break;
+        }
+
+        const tooltip = document.getElementById('tour-tooltip');
+        const spotlight = document.getElementById('tour-spotlight');
+
+        document.getElementById('tour-title').textContent = step.title;
+        document.getElementById('tour-body').textContent = step.body;
+        document.getElementById('tour-count').textContent = `${tourStep + 1} / ${tourSteps.length}`;
+        document.getElementById('tour-next-btn').textContent = tourStep === tourSteps.length - 1 ? 'Finish' : 'Next';
+
+        const dotsEl = document.getElementById('tour-dots');
+        dotsEl.innerHTML = tourSteps.map((_, i) =>
+            `<div class="tour-dot ${i === tourStep ? 'active' : i < tourStep ? 'done' : ''}"></div>`
+        ).join('');
+
+        tooltip.style.transform = '';
+
+        if (el) {
+            const rect = el.getBoundingClientRect();
+            const pad = 8;
+            spotlight.style.display = 'block';
+            spotlight.style.top = (rect.top - pad) + 'px';
+            spotlight.style.left = (rect.left - pad) + 'px';
+            spotlight.style.width = (rect.width + pad * 2) + 'px';
+            spotlight.style.height = (rect.height + pad * 2) + 'px';
+
+            tooltip.style.display = 'block';
+            const tw = Math.min(360, window.innerWidth * 0.9);
+            if (step.position === 'right') {
+                tooltip.style.top = Math.max(10, rect.top) + 'px';
+                tooltip.style.left = Math.min(rect.right + 16, window.innerWidth - tw - 16) + 'px';
+            } else if (step.position === 'bottom') {
+                tooltip.style.top = Math.min(rect.bottom + 12, window.innerHeight - 220) + 'px';
+                tooltip.style.left = Math.max(16, Math.min(rect.left, window.innerWidth - tw - 16)) + 'px';
+            } else if (step.position === 'left') {
+                tooltip.style.top = Math.max(10, rect.top) + 'px';
+                tooltip.style.left = Math.max(16, rect.left - tw - 16) + 'px';
+            } else {
+                tooltip.style.top = Math.max(10, rect.top - 200) + 'px';
+                tooltip.style.left = Math.max(16, rect.left) + 'px';
+            }
+        } else {
+            spotlight.style.display = 'none';
+            tooltip.style.display = 'block';
+            tooltip.style.top = '50%';
+            tooltip.style.left = '50%';
+            tooltip.style.transform = 'translate(-50%, -50%)';
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // DECLOAK: Clean up all overlays on every page load
+    // ══════════════════════════════════════════════════════════
+    function decloakAll() {
+        // End any active tour
+        tourActive = false;
+        const tourOverlay = document.getElementById('tour-overlay');
+        const spotlight = document.getElementById('tour-spotlight');
+        const tooltip = document.getElementById('tour-tooltip');
+        if (tourOverlay) { tourOverlay.classList.remove('active'); tourOverlay.style.display = 'none'; }
+        if (spotlight) spotlight.style.display = 'none';
+        if (tooltip) tooltip.style.display = 'none';
+        // Close cheatsheet
+        document.getElementById('cheatsheet-overlay').classList.remove('open');
+        // Close welcome
+        document.getElementById('welcome-overlay').classList.remove('open');
+        // Close mobile sidebar
+        document.getElementById('sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebar-overlay').classList.remove('open');
+    }
+
+    // Run decloak on DOMContentLoaded to catch any stale state from bfcache
+    document.addEventListener('DOMContentLoaded', decloakAll);
+
+    // Also decloak on pageshow (handles bfcache/back-forward navigation)
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) decloakAll();
+    });
+
+    // Close overlays before navigating away (prevents flash on back-button)
+    window.addEventListener('beforeunload', decloakAll);
+    window.addEventListener('pagehide', decloakAll);
+
+    // Intercept sidebar nav clicks: close overlays, close mobile menu, then navigate
+    document.querySelectorAll('.sidebar-nav a, .bottom-nav a').forEach(link => {
+        link.addEventListener('click', function(e) {
+            decloakAll();
+        });
+    });
+
+    // Escape key closes any overlay
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            if (tourActive) endTour();
+            else if (document.getElementById('cheatsheet-overlay').classList.contains('open')) closeCheatsheet();
+            else if (document.getElementById('welcome-overlay').classList.contains('open')) dismissWelcome();
+        }
+    });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,933 @@
+{% extends "base.html" %}
+{% block title %}Historical Analysis - CA Lottery Predictor{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ── Filter Controls ── */
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .game-tabs {
+        display: flex;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .game-tabs button {
+        background: none;
+        border: none;
+        padding: 0.5rem 1.25rem;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .game-tabs button.active {
+        background: var(--accent);
+        color: white;
+    }
+    .window-tabs {
+        display: flex;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .window-tabs button {
+        background: none;
+        border: none;
+        padding: 0.5rem 1rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.15s;
+    }
+    .window-tabs button.active {
+        background: var(--bg-hover);
+        color: var(--text);
+    }
+
+    /* ── Section Headers ── */
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    .section-header h2 {
+        font-size: 1rem;
+        font-weight: 600;
+    }
+    .section-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        background: var(--accent);
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+    }
+
+    /* ── Mini Charts Grid ── */
+    .mini-charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+    .mini-chart-box {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem;
+    }
+    .mini-chart-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    /* ── Hot/Cold Layout ── */
+    .hot-cold-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    .hc-column-title {
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border);
+    }
+    .hc-column-title.hot { color: var(--green); }
+    .hc-column-title.cold { color: var(--red); }
+    .hc-digit-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .hc-digit-row:last-child { border-bottom: none; }
+    .hc-ball {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: white;
+        flex-shrink: 0;
+    }
+    .hc-ball.hot { background: var(--green); }
+    .hc-ball.cold { background: var(--red); }
+    .hc-stats {
+        flex: 1;
+        font-size: 0.8rem;
+    }
+    .hc-stats .pct {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .hc-stats .dev {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+    .hc-bar-track {
+        height: 4px;
+        background: var(--bg);
+        border-radius: 2px;
+        margin-top: 4px;
+        overflow: hidden;
+    }
+    .hc-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 0.4s ease;
+    }
+
+    /* ── Gap Table ── */
+    .sortable-table th {
+        cursor: pointer;
+        user-select: none;
+        position: relative;
+        padding-right: 1.25rem;
+    }
+    .sortable-table th::after {
+        content: '';
+        position: absolute;
+        right: 0.4rem;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 0.6rem;
+        color: var(--text-muted);
+    }
+    .sortable-table th.sort-asc::after { content: '\25B2'; }
+    .sortable-table th.sort-desc::after { content: '\25BC'; }
+    .badge-overdue {
+        background: rgba(239, 68, 68, 0.15);
+        color: var(--red);
+    }
+    .badge-normal {
+        background: rgba(34, 197, 94, 0.15);
+        color: var(--green);
+    }
+
+    /* ── Heatmap ── */
+    .heatmap-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .heatmap-section-label {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    .heatmap-grid {
+        display: grid;
+        grid-template-columns: 32px repeat(10, 1fr);
+        grid-template-rows: 32px repeat(10, 1fr);
+        gap: 2px;
+    }
+    .heatmap-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+    .heatmap-cell {
+        aspect-ratio: 1;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        color: transparent;
+        transition: all 0.15s;
+        cursor: default;
+        position: relative;
+        min-width: 28px;
+    }
+    .heatmap-cell:hover {
+        color: white;
+        transform: scale(1.15);
+        z-index: 1;
+        box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+    }
+
+    /* ── Sum Distribution ── */
+    .sum-layout {
+        display: grid;
+        grid-template-columns: 1fr 220px;
+        gap: 1.5rem;
+    }
+    .sum-stats-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .sum-stat-item {
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.75rem;
+        text-align: center;
+    }
+    .sum-stat-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+    .sum-stat-label {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    /* ── Loading Spinner ── */
+    .loading-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 160px;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+    .spinner {
+        width: 20px;
+        height: 20px;
+        border: 2px solid var(--border);
+        border-top-color: var(--accent);
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin-right: 0.5rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty / Error States ── */
+    .state-message {
+        text-align: center;
+        padding: 2rem;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+    }
+    .state-message.error { color: var(--red); }
+
+    @media (max-width: 768px) {
+        .hot-cold-grid { grid-template-columns: 1fr; }
+        .sum-layout { grid-template-columns: 1fr; }
+        .filter-bar { flex-direction: column; align-items: flex-start; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ═══════════════════ Header ═══════════════════ -->
+<div class="page-header">
+    <h1>Historical Analysis</h1>
+    <div class="filter-bar">
+        <div class="game-tabs" id="gameTabs">
+            <button class="active" data-game="daily3" onclick="switchGame('daily3')">Daily 3</button>
+            <button data-game="daily4" onclick="switchGame('daily4')">Daily 4</button>
+        </div>
+        <div class="window-tabs" id="windowTabs">
+            <button data-window="50" onclick="switchWindow(50)">50</button>
+            <button class="active" data-window="100" onclick="switchWindow(100)">100</button>
+            <button data-window="200" onclick="switchWindow(200)">200</button>
+            <button data-window="all" onclick="switchWindow('all')">All</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ Section 1: Digit Frequency ═══════════════════ -->
+<div class="card" id="section-frequency">
+    <div class="section-header">
+        <span class="section-number">1</span>
+        <h2>Digit Frequency</h2>
+    </div>
+    <div id="freq-overall-wrap">
+        <canvas id="freqOverallChart" height="90"></canvas>
+    </div>
+    <div style="margin-top: 1.25rem;">
+        <div class="card-title">Per-Position Breakdown</div>
+        <div class="mini-charts-grid" id="freqPositionCharts"></div>
+    </div>
+</div>
+
+<!-- ═══════════════════ Section 2: Hot & Cold Numbers ═══════════════════ -->
+<div class="card" id="section-hotcold">
+    <div class="section-header">
+        <span class="section-number">2</span>
+        <h2>Hot &amp; Cold Numbers</h2>
+    </div>
+    <div class="hot-cold-grid" id="hotColdContent">
+        <div class="loading-placeholder"><span class="spinner"></span> Loading...</div>
+    </div>
+</div>
+
+<!-- ═══════════════════ Section 3: Gap Analysis ═══════════════════ -->
+<div class="card" id="section-gaps">
+    <div class="section-header">
+        <span class="section-number">3</span>
+        <h2>Gap Analysis</h2>
+    </div>
+    <div style="overflow-x: auto;">
+        <table class="sortable-table" id="gapTable">
+            <thead>
+                <tr>
+                    <th data-col="digit">Digit</th>
+                    <th data-col="position">Position</th>
+                    <th data-col="current_gap">Current Gap</th>
+                    <th data-col="avg_gap">Avg Gap</th>
+                    <th data-col="max_gap">Max Gap</th>
+                    <th data-col="status">Status</th>
+                </tr>
+            </thead>
+            <tbody id="gapTableBody">
+                <tr><td colspan="6" class="loading-placeholder"><span class="spinner"></span> Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ═══════════════════ Section 4: Pair Frequency ═══════════════════ -->
+<div class="card" id="section-pairs">
+    <div class="section-header">
+        <span class="section-number">4</span>
+        <h2>Pair Frequency</h2>
+    </div>
+    <div class="heatmap-container" id="pairHeatmaps">
+        <div class="loading-placeholder"><span class="spinner"></span> Loading...</div>
+    </div>
+</div>
+
+<!-- ═══════════════════ Section 5: Digit Sum Distribution ═══════════════════ -->
+<div class="card" id="section-sum">
+    <div class="section-header">
+        <span class="section-number">5</span>
+        <h2>Digit Sum Distribution</h2>
+    </div>
+    <div class="sum-layout">
+        <div>
+            <canvas id="sumChart" height="100"></canvas>
+        </div>
+        <div class="sum-stats-panel" id="sumStatsPanel">
+            <div class="loading-placeholder"><span class="spinner"></span></div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════ Section 6: Trends ═══════════════════ -->
+<div class="card" id="section-trends">
+    <div class="section-header">
+        <span class="section-number">6</span>
+        <h2>Digit Value Trends</h2>
+    </div>
+    <canvas id="trendsChart" height="100"></canvas>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+(function () {
+    'use strict';
+
+    // ── State ──────────────────────────────────────────────
+    let currentGame = 'daily3';
+    let currentWindow = 100;
+
+    // ── Chart Instances (destroy before recreating) ───────
+    const charts = {};
+    function destroyChart(key) {
+        if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+    }
+
+    // ── Chart.js Global Defaults ──────────────────────────
+    Chart.defaults.color = '#8b8d97';
+    Chart.defaults.borderColor = '#2a2d3a';
+    Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
+
+    // ── Filter Controls ───────────────────────────────────
+    window.switchGame = function (game) {
+        currentGame = game;
+        document.querySelectorAll('#gameTabs button').forEach(b => {
+            b.classList.toggle('active', b.dataset.game === game);
+        });
+        refreshAll();
+    };
+
+    window.switchWindow = function (win) {
+        currentWindow = win;
+        document.querySelectorAll('#windowTabs button').forEach(b => {
+            b.classList.toggle('active', String(b.dataset.window) === String(win));
+        });
+        refreshAll();
+    };
+
+    // ── Helpers ───────────────────────────────────────────
+    function qp() {
+        const w = currentWindow === 'all' ? '' : `&window=${currentWindow}`;
+        return `game_type=${currentGame}${w}`;
+    }
+
+    function numPositions() {
+        return currentGame === 'daily3' ? 3 : 4;
+    }
+
+    async function apiFetch(path) {
+        const sep = path.includes('?') ? '&' : '?';
+        const url = `/api/analysis/${path}${sep}${qp()}`;
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`API ${resp.status}`);
+        return resp.json();
+    }
+
+    function showLoading(el) {
+        el.innerHTML = '<div class="loading-placeholder"><span class="spinner"></span> Loading...</div>';
+    }
+
+    function showError(el, msg) {
+        el.innerHTML = `<div class="state-message error">${msg || 'Failed to load data.'}</div>`;
+    }
+
+    function showEmpty(el) {
+        el.innerHTML = '<div class="state-message">No data available. Load draws first.</div>';
+    }
+
+    const EXPECTED_PCT = 10; // Each digit expected ~10% for 0-9 uniform
+
+    // ── 1. Digit Frequency ────────────────────────────────
+    async function loadFrequency() {
+        const wrap = document.getElementById('freq-overall-wrap');
+        const posWrap = document.getElementById('freqPositionCharts');
+        try {
+            const data = await apiFetch('frequency');
+            if (!data || !data.overall) { showEmpty(wrap); return; }
+
+            // Overall bar chart
+            const labels = Object.keys(data.overall).sort((a, b) => a - b);
+            const values = labels.map(l => data.overall[l]);
+            const total = values.reduce((s, v) => s + v, 0) || 1;
+            const expectedCount = total / 10;
+            const bgColors = values.map(v => v >= expectedCount ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.6)');
+
+            destroyChart('freqOverall');
+            charts.freqOverall = new Chart(document.getElementById('freqOverallChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Frequency',
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderRadius: 4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.parsed.y}  (${((ctx.parsed.y / total) * 100).toFixed(1)}%)`
+                            }
+                        },
+                        annotation: undefined
+                    },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#8b8d97' } },
+                        y: { grid: { color: '#2a2d3a' }, ticks: { color: '#8b8d97' } }
+                    }
+                }
+            });
+
+            // Per-position mini charts
+            posWrap.innerHTML = '';
+            const positions = data.per_position || {};
+            for (let p = 1; p <= numPositions(); p++) {
+                const posData = positions[String(p)] || positions[p] || {};
+                const pLabels = Object.keys(posData).sort((a, b) => a - b);
+                const pValues = pLabels.map(l => posData[l]);
+                const pTotal = pValues.reduce((s, v) => s + v, 0) || 1;
+                const pExpected = pTotal / 10;
+                const pColors = pValues.map(v => v >= pExpected ? 'rgba(34,197,94,0.7)' : 'rgba(239,68,68,0.6)');
+
+                const box = document.createElement('div');
+                box.className = 'mini-chart-box';
+                box.innerHTML = `<div class="mini-chart-label">Position ${p}</div><canvas id="freqPos${p}" height="80"></canvas>`;
+                posWrap.appendChild(box);
+
+                destroyChart('freqPos' + p);
+                charts['freqPos' + p] = new Chart(document.getElementById('freqPos' + p), {
+                    type: 'bar',
+                    data: {
+                        labels: pLabels,
+                        datasets: [{
+                            data: pValues,
+                            backgroundColor: pColors,
+                            borderRadius: 3,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#8b8d97' } },
+                            y: { grid: { color: '#2a2d3a' }, ticks: { font: { size: 10 }, color: '#8b8d97' } }
+                        }
+                    }
+                });
+            }
+        } catch (e) {
+            showError(wrap, 'Failed to load frequency data.');
+            console.error('Frequency error:', e);
+        }
+    }
+
+    // ── 2. Hot & Cold Numbers ─────────────────────────────
+    async function loadHotCold() {
+        const el = document.getElementById('hotColdContent');
+        showLoading(el);
+        try {
+            const data = await apiFetch('hot-cold');
+            if (!data || (!data.hot && !data.cold)) { showEmpty(el); return; }
+
+            const hotDigits = data.hot || [];
+            const coldDigits = data.cold || [];
+
+            function renderColumn(digits, type) {
+                if (!digits.length) return '<div class="state-message">None</div>';
+                return digits.map(d => {
+                    const pct = d.percentage != null ? d.percentage.toFixed(1) : '?';
+                    const dev = d.deviation != null ? (d.deviation > 0 ? '+' : '') + d.deviation.toFixed(1) : '';
+                    const barWidth = Math.min(Math.max((d.percentage || 0) / 20 * 100, 5), 100);
+                    const barColor = type === 'hot' ? 'var(--green)' : 'var(--red)';
+                    return `
+                        <div class="hc-digit-row">
+                            <div class="hc-ball ${type}">${d.digit}</div>
+                            <div class="hc-stats">
+                                <span class="pct">${pct}%</span>
+                                <span class="dev">${dev ? '(' + dev + '% vs expected)' : ''}</span>
+                                <div class="hc-bar-track">
+                                    <div class="hc-bar-fill" style="width:${barWidth}%;background:${barColor}"></div>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+            }
+
+            el.innerHTML = `
+                <div>
+                    <div class="hc-column-title hot">Hot Digits</div>
+                    ${renderColumn(hotDigits, 'hot')}
+                </div>
+                <div>
+                    <div class="hc-column-title cold">Cold Digits</div>
+                    ${renderColumn(coldDigits, 'cold')}
+                </div>`;
+        } catch (e) {
+            showError(el);
+            console.error('Hot/Cold error:', e);
+        }
+    }
+
+    // ── 3. Gap Analysis ───────────────────────────────────
+    let gapData = [];
+    let gapSortCol = 'current_gap';
+    let gapSortDir = 'desc';
+
+    async function loadGaps() {
+        const tbody = document.getElementById('gapTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" class="loading-placeholder"><span class="spinner"></span> Loading...</td></tr>';
+        try {
+            const data = await apiFetch('gaps');
+            if (!data || !data.gaps || !data.gaps.length) {
+                tbody.innerHTML = '<tr><td colspan="6" class="state-message">No gap data available.</td></tr>';
+                return;
+            }
+            gapData = data.gaps;
+            renderGapTable();
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="6" class="state-message error">Failed to load gap data.</td></tr>';
+            console.error('Gap error:', e);
+        }
+    }
+
+    function renderGapTable() {
+        const sorted = [...gapData].sort((a, b) => {
+            let av = a[gapSortCol], bv = b[gapSortCol];
+            if (typeof av === 'string') return gapSortDir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+            return gapSortDir === 'asc' ? av - bv : bv - av;
+        });
+
+        const tbody = document.getElementById('gapTableBody');
+        tbody.innerHTML = sorted.map(row => {
+            const overdue = row.current_gap > row.avg_gap;
+            const statusBadge = overdue
+                ? '<span class="badge badge-overdue">Overdue</span>'
+                : '<span class="badge badge-normal">Normal</span>';
+            return `<tr>
+                <td><span class="digit-ball small" style="width:30px;height:30px;font-size:0.85rem;">${row.digit}</span></td>
+                <td>Pos ${row.position}</td>
+                <td>${row.current_gap}</td>
+                <td>${typeof row.avg_gap === 'number' ? row.avg_gap.toFixed(1) : row.avg_gap}</td>
+                <td>${row.max_gap}</td>
+                <td>${statusBadge}</td>
+            </tr>`;
+        }).join('');
+
+        // Update sort indicators
+        document.querySelectorAll('#gapTable thead th').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.dataset.col === gapSortCol) {
+                th.classList.add(gapSortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    }
+
+    // Column-header click sorting
+    document.querySelectorAll('#gapTable thead th').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (!col) return;
+            if (gapSortCol === col) {
+                gapSortDir = gapSortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                gapSortCol = col;
+                gapSortDir = 'desc';
+            }
+            renderGapTable();
+        });
+    });
+
+    // ── 4. Pair Frequency Heatmaps ────────────────────────
+    async function loadPairs() {
+        const el = document.getElementById('pairHeatmaps');
+        showLoading(el);
+        try {
+            const data = await apiFetch('pairs');
+            if (!data || !data.pairs) { showEmpty(el); return; }
+
+            const pairsMap = data.pairs;
+            el.innerHTML = '';
+
+            // Build a heatmap for each adjacent position pair
+            const nPos = numPositions();
+            for (let p = 1; p < nPos; p++) {
+                const key = `${p}-${p + 1}`;
+                const matrix = pairsMap[key] || {};
+
+                // Find max count for color scaling
+                let maxCount = 0;
+                for (let i = 0; i <= 9; i++) {
+                    for (let j = 0; j <= 9; j++) {
+                        const val = (matrix[String(i)] && matrix[String(i)][String(j)]) || 0;
+                        if (val > maxCount) maxCount = val;
+                    }
+                }
+                if (maxCount === 0) maxCount = 1;
+
+                let html = `<div><div class="heatmap-section-label">Position ${p} &rarr; Position ${p + 1}</div>`;
+                html += '<div class="heatmap-grid">';
+
+                // Corner
+                html += '<div class="heatmap-label"></div>';
+                // Column headers
+                for (let j = 0; j <= 9; j++) {
+                    html += `<div class="heatmap-label">${j}</div>`;
+                }
+
+                // Rows
+                for (let i = 0; i <= 9; i++) {
+                    html += `<div class="heatmap-label">${i}</div>`;
+                    for (let j = 0; j <= 9; j++) {
+                        const val = (matrix[String(i)] && matrix[String(i)][String(j)]) || 0;
+                        const intensity = val / maxCount;
+                        const r = Math.round(99 + (99 - 99) * intensity);
+                        const g = Math.round(102 + (102 - 102) * intensity);
+                        const b = Math.round(241 * intensity);
+                        const alpha = 0.1 + intensity * 0.85;
+                        const bg = `rgba(99, 102, 241, ${alpha.toFixed(2)})`;
+                        html += `<div class="heatmap-cell" style="background:${bg}" title="(${i},${j}): ${val}">${val}</div>`;
+                    }
+                }
+                html += '</div></div>';
+                el.innerHTML += html;
+            }
+        } catch (e) {
+            showError(el);
+            console.error('Pairs error:', e);
+        }
+    }
+
+    // ── 5. Sum Distribution ───────────────────────────────
+    async function loadSum() {
+        const panel = document.getElementById('sumStatsPanel');
+        panel.innerHTML = '<div class="loading-placeholder"><span class="spinner"></span></div>';
+        try {
+            const data = await apiFetch('sum');
+            if (!data || !data.distribution) {
+                showEmpty(panel);
+                return;
+            }
+
+            const dist = data.distribution;
+            const labels = Object.keys(dist).sort((a, b) => Number(a) - Number(b));
+            const values = labels.map(l => dist[l]);
+
+            const mean = data.mean;
+            const meanColor = 'rgba(234, 179, 8, 0.8)';
+
+            // Bar colors: highlight current sum if available
+            const currentSum = data.current_sum;
+            const bgColors = labels.map(l => {
+                if (currentSum != null && Number(l) === currentSum) return 'rgba(99,102,241,1)';
+                return 'rgba(99,102,241,0.5)';
+            });
+
+            destroyChart('sumChart');
+            const chartPlugins = [];
+            // Mean line as a custom plugin
+            if (mean != null) {
+                chartPlugins.push({
+                    id: 'meanLine',
+                    afterDraw(chart) {
+                        const xScale = chart.scales.x;
+                        const yScale = chart.scales.y;
+                        const ctx = chart.ctx;
+                        // Find pixel x for the mean
+                        const idx = labels.indexOf(String(Math.round(mean)));
+                        let xPx;
+                        if (idx >= 0) {
+                            xPx = xScale.getPixelForValue(idx);
+                        } else {
+                            // interpolate
+                            const frac = (mean - Number(labels[0])) / (Number(labels[labels.length - 1]) - Number(labels[0]));
+                            xPx = xScale.left + frac * (xScale.right - xScale.left);
+                        }
+                        ctx.save();
+                        ctx.strokeStyle = meanColor;
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([6, 3]);
+                        ctx.beginPath();
+                        ctx.moveTo(xPx, yScale.top);
+                        ctx.lineTo(xPx, yScale.bottom);
+                        ctx.stroke();
+                        ctx.fillStyle = meanColor;
+                        ctx.font = '11px sans-serif';
+                        ctx.fillText(`Mean: ${mean.toFixed(1)}`, xPx + 4, yScale.top + 14);
+                        ctx.restore();
+                    }
+                });
+            }
+
+            charts.sumChart = new Chart(document.getElementById('sumChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Count',
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderRadius: 3,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#8b8d97', font: { size: 10 } },
+                             title: { display: true, text: 'Digit Sum', color: '#8b8d97' } },
+                        y: { grid: { color: '#2a2d3a' }, ticks: { color: '#8b8d97' } }
+                    }
+                },
+                plugins: chartPlugins,
+            });
+
+            // Stats panel
+            panel.innerHTML = `
+                <div class="sum-stat-item">
+                    <div class="sum-stat-value">${mean != null ? mean.toFixed(1) : '--'}</div>
+                    <div class="sum-stat-label">Mean</div>
+                </div>
+                <div class="sum-stat-item">
+                    <div class="sum-stat-value">${data.median != null ? data.median.toFixed(1) : '--'}</div>
+                    <div class="sum-stat-label">Median</div>
+                </div>
+                <div class="sum-stat-item">
+                    <div class="sum-stat-value">${data.std_dev != null ? data.std_dev.toFixed(2) : '--'}</div>
+                    <div class="sum-stat-label">Std Dev</div>
+                </div>
+                <div class="sum-stat-item">
+                    <div class="sum-stat-value">${currentSum != null ? currentSum : '--'}</div>
+                    <div class="sum-stat-label">Latest Sum</div>
+                </div>
+                <div class="sum-stat-item">
+                    <div class="sum-stat-value">${data.streak != null ? data.streak : '--'}</div>
+                    <div class="sum-stat-label">Current Streak</div>
+                </div>`;
+        } catch (e) {
+            showError(panel);
+            console.error('Sum error:', e);
+        }
+    }
+
+    // ── 6. Trends ─────────────────────────────────────────
+    async function loadTrends() {
+        try {
+            const data = await apiFetch('trends');
+            if (!data || !data.trends) return;
+
+            const trends = data.trends;
+            // Expected: { labels: [...dates], positions: { "1": [...], "2": [...], ... } }
+            const labels = trends.labels || [];
+            const posColors = [
+                'rgba(99,102,241,0.9)',
+                'rgba(34,197,94,0.9)',
+                'rgba(234,179,8,0.9)',
+                'rgba(239,68,68,0.9)',
+            ];
+
+            const datasets = [];
+            const positions = trends.positions || {};
+            let idx = 0;
+            for (const posKey of Object.keys(positions).sort()) {
+                datasets.push({
+                    label: `Position ${posKey}`,
+                    data: positions[posKey],
+                    borderColor: posColors[idx % posColors.length],
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                });
+                idx++;
+            }
+
+            destroyChart('trends');
+            charts.trends = new Chart(document.getElementById('trendsChart'), {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            labels: { boxWidth: 12, padding: 16, color: '#8b8d97' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#2a2d3a' },
+                            ticks: { color: '#8b8d97', maxTicksLimit: 12, font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: '#2a2d3a' },
+                            ticks: { color: '#8b8d97' },
+                            title: { display: true, text: 'Rolling Avg Digit Value', color: '#8b8d97' }
+                        }
+                    }
+                }
+            });
+        } catch (e) {
+            console.error('Trends error:', e);
+        }
+    }
+
+    // ── Refresh All Sections ──────────────────────────────
+    function refreshAll() {
+        loadFrequency();
+        loadHotCold();
+        loadGaps();
+        loadPairs();
+        loadSum();
+        loadTrends();
+    }
+
+    // ── Init ──────────────────────────────────────────────
+    refreshAll();
+
+})();
+</script>
+{% endblock %}

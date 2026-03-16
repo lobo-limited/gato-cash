@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - CA Lottery Predictor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Settings</h1>
+</div>
+
+<!-- Scheduler Status -->
+<div class="card">
+    <div class="card-title">Scheduler Status</div>
+    <div id="schedulerStatus" style="color:var(--text-muted);">Loading...</div>
+    <div style="margin-top:1rem;padding:1rem;background:var(--bg);border-radius:8px;font-size:0.8rem;color:var(--text-muted);">
+        <strong style="color:var(--text);">Schedule Overview</strong>
+        <ul style="margin-top:0.5rem;list-style:none;padding:0;">
+            <li style="padding:0.25rem 0;">Fetch draws: every 30 minutes</li>
+            <li style="padding:0.25rem 0;">Score predictions: 5 minutes after fetch (+ fallback every 35 min)</li>
+            <li style="padding:0.25rem 0;">Generate predictions: daily at 11:00 AM and 5:00 PM</li>
+            <li style="padding:0.25rem 0;">Recalibrate weights: weekly, Sunday at 3:00 AM</li>
+        </ul>
+    </div>
+</div>
+
+<!-- Manual Trigger Buttons -->
+<div class="card">
+    <div class="card-title">Manual Actions</div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.75rem;">
+        <button class="btn btn-primary" onclick="triggerAction('fetch')">Fetch New Draws</button>
+        <button class="btn btn-primary" onclick="triggerAction('generate')">Generate Predictions</button>
+        <button class="btn btn-primary" onclick="triggerAction('calibrate')">Recalibrate Weights</button>
+        <button class="btn btn-primary" onclick="triggerAction('train')">Retrain Models</button>
+        <button class="btn btn-outline" onclick="triggerAction('compute-performance')">Compute Performance</button>
+    </div>
+    <div style="margin-top:0.75rem;">
+        <label style="font-size:0.8rem;color:var(--text-muted);">Game type:</label>
+        <select id="gameTypeSelect" class="btn btn-outline" style="margin-left:0.5rem;">
+            <option value="daily3">Daily 3</option>
+            <option value="daily4">Daily 4</option>
+        </select>
+    </div>
+    <div id="actionStatus" style="display:none;margin-top:1rem;padding:1rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+        <pre id="actionResult" style="color:var(--text);font-size:0.8rem;white-space:pre-wrap;margin:0;max-height:300px;overflow-y:auto;"></pre>
+    </div>
+</div>
+
+<!-- Database Stats -->
+<div class="card">
+    <div class="card-title">Database Statistics</div>
+    <div id="dbStats" class="grid-4">
+        <div>
+            <div class="stat-value" id="statD3Draws">--</div>
+            <div class="stat-label">Daily 3 Draws</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statD4Draws">--</div>
+            <div class="stat-label">Daily 4 Draws</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statPredictions">--</div>
+            <div class="stat-label">Total Predictions</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statScored">--</div>
+            <div class="stat-label">Scored Predictions</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statBacktests">--</div>
+            <div class="stat-label">Backtest Runs</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statLatestD3">--</div>
+            <div class="stat-label">Latest Daily 3</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statLatestD4">--</div>
+            <div class="stat-label">Latest Daily 4</div>
+        </div>
+        <div>
+            <div class="stat-value" id="statHealth" style="color:var(--green);">--</div>
+            <div class="stat-label">System Status</div>
+        </div>
+    </div>
+</div>
+
+<!-- Configuration -->
+<div class="card">
+    <div class="card-title">Current Configuration</div>
+    <table>
+        <tbody>
+            <tr><td style="color:var(--text-muted);width:250px;">Database</td><td id="cfgDb">{{ config.database_url }}</td></tr>
+            <tr><td style="color:var(--text-muted);">App Mode</td><td>{{ config.app_mode }}</td></tr>
+            <tr><td style="color:var(--text-muted);">API Base URL</td><td>{{ config.api_base }}</td></tr>
+            <tr><td style="color:var(--text-muted);">Daily 3 Game ID</td><td>{{ config.daily3_game_id }}</td></tr>
+            <tr><td style="color:var(--text-muted);">Daily 4 Game ID</td><td>{{ config.daily4_game_id }}</td></tr>
+            <tr><td style="color:var(--text-muted);">API Page Size</td><td>{{ config.api_page_size }}</td></tr>
+            <tr><td style="color:var(--text-muted);">Fetch Retry Attempts</td><td>{{ config.fetch_retry_attempts }}</td></tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function getGameType() {
+        return document.getElementById('gameTypeSelect').value;
+    }
+
+    async function loadHealth() {
+        try {
+            const resp = await fetch('/api/health');
+            const data = await resp.json();
+            renderHealth(data);
+        } catch(e) {
+            document.getElementById('statHealth').textContent = 'Error';
+            document.getElementById('statHealth').style.color = 'var(--red)';
+        }
+    }
+
+    function renderHealth(data) {
+        const db = data.database || {};
+        document.getElementById('statD3Draws').textContent = (db.daily3_draws || 0).toLocaleString();
+        document.getElementById('statD4Draws').textContent = (db.daily4_draws || 0).toLocaleString();
+        document.getElementById('statPredictions').textContent = (db.total_predictions || 0).toLocaleString();
+        document.getElementById('statScored').textContent = (db.scored_predictions || 0).toLocaleString();
+        document.getElementById('statBacktests').textContent = (db.total_backtests || 0).toLocaleString();
+        document.getElementById('statLatestD3').textContent = db.latest_daily3_draw
+            ? new Date(db.latest_daily3_draw).toLocaleDateString()
+            : 'None';
+        document.getElementById('statLatestD4').textContent = db.latest_daily4_draw
+            ? new Date(db.latest_daily4_draw).toLocaleDateString()
+            : 'None';
+        document.getElementById('statHealth').textContent = data.status === 'healthy' ? 'Healthy' : data.status;
+        document.getElementById('statHealth').style.color = data.status === 'healthy' ? 'var(--green)' : 'var(--red)';
+
+        // Scheduler status
+        renderScheduler(data.scheduler || {});
+    }
+
+    function renderScheduler(sched) {
+        const container = document.getElementById('schedulerStatus');
+        const running = sched.running;
+        const statusBadge = running
+            ? '<span style="color:var(--green);font-weight:600;">Running</span>'
+            : '<span style="color:var(--red);font-weight:600;">Stopped</span>';
+
+        let html = `<p style="margin-bottom:0.75rem;">Status: ${statusBadge}</p>`;
+
+        if (sched.last_fetch) html += `<p style="font-size:0.85rem;">Last fetch: ${new Date(sched.last_fetch).toLocaleString()}</p>`;
+        if (sched.last_score) html += `<p style="font-size:0.85rem;">Last score: ${new Date(sched.last_score).toLocaleString()}</p>`;
+        if (sched.last_generate) html += `<p style="font-size:0.85rem;">Last generate: ${new Date(sched.last_generate).toLocaleString()}</p>`;
+        if (sched.last_calibrate) html += `<p style="font-size:0.85rem;">Last calibrate: ${new Date(sched.last_calibrate).toLocaleString()}</p>`;
+
+        if (sched.jobs && sched.jobs.length > 0) {
+            html += '<table style="margin-top:0.75rem;"><thead><tr><th>Job</th><th>Next Run</th></tr></thead><tbody>';
+            for (const j of sched.jobs) {
+                const nextRun = j.next_run ? new Date(j.next_run).toLocaleString() : 'N/A';
+                html += `<tr><td>${j.name || j.id}</td><td>${nextRun}</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+
+        if (sched.recent_errors && sched.recent_errors.length > 0) {
+            html += '<div style="margin-top:1rem;"><strong style="color:var(--red);">Recent Errors:</strong>';
+            for (const e of sched.recent_errors.slice(-5)) {
+                html += `<div style="font-size:0.8rem;padding:0.25rem 0;color:var(--text-muted);">${e.time} - ${e.job_id}: ${e.error}</div>`;
+            }
+            html += '</div>';
+        }
+
+        container.innerHTML = html;
+    }
+
+    async function triggerAction(action) {
+        const gameType = getGameType();
+        const statusEl = document.getElementById('actionStatus');
+        const resultEl = document.getElementById('actionResult');
+        statusEl.style.display = 'block';
+        resultEl.textContent = `Running ${action}...`;
+
+        let url, method;
+        switch(action) {
+            case 'fetch':
+                url = '/api/draws/refresh';
+                method = 'POST';
+                break;
+            case 'generate':
+                url = `/api/predictions/generate?game_type=${gameType}&draw_time=evening`;
+                method = 'POST';
+                break;
+            case 'calibrate':
+                url = `/api/admin/calibrate?game_type=${gameType}`;
+                method = 'POST';
+                break;
+            case 'train':
+                url = `/api/admin/train?game_type=${gameType}`;
+                method = 'POST';
+                break;
+            case 'compute-performance':
+                url = `/api/admin/compute-performance?game_type=${gameType}`;
+                method = 'POST';
+                break;
+            default:
+                resultEl.textContent = 'Unknown action';
+                return;
+        }
+
+        try {
+            const resp = await fetch(url, { method });
+            const data = await resp.json();
+            resultEl.textContent = JSON.stringify(data, null, 2);
+            // Refresh health stats after action.
+            loadHealth();
+        } catch(e) {
+            resultEl.textContent = 'Error: ' + e.message;
+        }
+    }
+
+    // Load on page load.
+    loadHealth();
+</script>
+{% endblock %}

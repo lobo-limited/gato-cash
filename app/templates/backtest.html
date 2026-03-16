@@ -1,0 +1,803 @@
+{% extends "base.html" %}
+
+{% block title %}Backtesting - CA Lottery Predictor{% endblock %}
+
+{% block extra_head %}
+<style>
+    .game-selector {
+        display: flex;
+        gap: 0.5rem;
+    }
+    .game-selector button {
+        padding: 0.5rem 1.25rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.15s;
+    }
+    .game-selector button.active {
+        background: var(--accent);
+        color: white;
+        border-color: var(--accent);
+    }
+    .game-selector button:hover:not(.active) {
+        background: var(--bg-hover);
+        color: var(--text);
+    }
+    .form-row {
+        display: flex;
+        gap: 1rem;
+        align-items: end;
+        flex-wrap: wrap;
+        margin-bottom: 1rem;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+    .form-group label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .form-group select,
+    .form-group input {
+        padding: 0.5rem 0.75rem;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text);
+        font-size: 0.85rem;
+        min-width: 120px;
+    }
+    .form-group select:focus,
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--accent);
+    }
+    .runs-table { margin-top: 0.5rem; }
+    .runs-table tr { cursor: pointer; }
+    .runs-table tr:hover { background: var(--bg-hover); }
+    .metric-card {
+        text-align: center;
+        padding: 1rem;
+    }
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    .metric-label {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+    .metric-sub {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+    }
+    .hit-yes { color: var(--green); font-weight: 600; }
+    .hit-no { color: var(--red); }
+    .progress-bar {
+        width: 100%;
+        height: 4px;
+        background: var(--border);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 0.5rem;
+        display: none;
+    }
+    .progress-bar.active {
+        display: block;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        background: var(--accent);
+        width: 0%;
+        animation: indeterminate 1.5s ease-in-out infinite;
+    }
+    @keyframes indeterminate {
+        0% { width: 0%; margin-left: 0%; }
+        50% { width: 40%; margin-left: 30%; }
+        100% { width: 0%; margin-left: 100%; }
+    }
+    .view-tabs {
+        display: flex;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+    }
+    .view-tabs button {
+        background: none;
+        border: none;
+        padding: 0.75rem 1.25rem;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+    }
+    .view-tabs button.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+    }
+    .view-section { display: none; }
+    .view-section.active { display: block; }
+    .compare-checkbox {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--accent);
+        cursor: pointer;
+    }
+    .compare-bar {
+        position: sticky;
+        bottom: 0;
+        background: var(--bg-card);
+        border-top: 1px solid var(--border);
+        padding: 0.75rem 1.5rem;
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        border-radius: 0 0 12px 12px;
+    }
+    .compare-bar.active { display: flex; }
+    .chart-container {
+        position: relative;
+        height: 300px;
+        margin: 1rem 0;
+    }
+    .pagination {
+        display: flex;
+        gap: 0.5rem;
+        justify-content: center;
+        margin-top: 1rem;
+    }
+    .badge-positive { background: rgba(34,197,94,0.15); color: var(--green); }
+    .badge-negative { background: rgba(239,68,68,0.15); color: var(--red); }
+    .badge-neutral { background: rgba(139,141,151,0.15); color: var(--text-muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Backtesting</h1>
+    <div class="game-selector">
+        <button class="active" onclick="setGame('daily3')" id="btn-daily3">Daily 3</button>
+        <button onclick="setGame('daily4')" id="btn-daily4">Daily 4</button>
+    </div>
+</div>
+
+<!-- View tabs -->
+<div class="view-tabs">
+    <button class="active" onclick="setView('runs')" id="tab-runs">Runs</button>
+    <button onclick="setView('detail')" id="tab-detail">Run Detail</button>
+    <button onclick="setView('compare')" id="tab-compare">Compare</button>
+</div>
+
+<!-- ============================================================= -->
+<!-- RUNS VIEW -->
+<!-- ============================================================= -->
+<div class="view-section active" id="view-runs">
+
+    <!-- New Backtest Form -->
+    <div class="card">
+        <div class="card-title">NEW BACKTEST</div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Strategy</label>
+                <select id="strategy-select">
+                    <option value="all">All Strategies</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Training Window</label>
+                <input type="number" id="training-window" value="200" min="10" max="500">
+            </div>
+            <div class="form-group">
+                <label>Step Size</label>
+                <input type="number" id="step-size" value="1" min="1" max="50">
+            </div>
+            <div class="form-group">
+                <label>&nbsp;</label>
+                <button class="btn btn-primary" onclick="runBacktest()" id="run-btn">
+                    Run Backtest
+                </button>
+            </div>
+        </div>
+        <div class="progress-bar" id="progress-bar"><div class="progress-bar-fill"></div></div>
+        <div id="run-status" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem;"></div>
+    </div>
+
+    <!-- Runs List -->
+    <div class="card">
+        <div class="card-title">COMPLETED RUNS</div>
+        <div style="overflow-x:auto;">
+            <table class="runs-table">
+                <thead>
+                    <tr>
+                        <th style="width:30px;"></th>
+                        <th>Strategy</th>
+                        <th>Date Range</th>
+                        <th>Predictions</th>
+                        <th>Straight Rate</th>
+                        <th>Box Rate</th>
+                        <th>ROI</th>
+                        <th>Duration</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody id="runs-body">
+                    <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="compare-bar" id="compare-bar">
+            <span id="compare-count" style="font-size:0.85rem;">0 selected</span>
+            <button class="btn btn-primary" onclick="compareSelected()">Compare Selected</button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- RUN DETAIL VIEW -->
+<!-- ============================================================= -->
+<div class="view-section" id="view-detail">
+    <div id="detail-content">
+        <p style="text-align:center;color:var(--text-muted);padding:3rem;">
+            Select a run from the Runs tab to view details.
+        </p>
+    </div>
+</div>
+
+<!-- ============================================================= -->
+<!-- COMPARE VIEW -->
+<!-- ============================================================= -->
+<div class="view-section" id="view-compare">
+    <div id="compare-content">
+        <p style="text-align:center;color:var(--text-muted);padding:3rem;">
+            Select 2-4 runs from the Runs tab using checkboxes, then click Compare.
+        </p>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentGame = 'daily3';
+let selectedRuns = new Set();
+let detailChart = null;
+let compareChart = null;
+
+function setGame(game) {
+    currentGame = game;
+    document.getElementById('btn-daily3').classList.toggle('active', game === 'daily3');
+    document.getElementById('btn-daily4').classList.toggle('active', game === 'daily4');
+    loadRuns();
+}
+
+function setView(view) {
+    ['runs', 'detail', 'compare'].forEach(v => {
+        document.getElementById('tab-' + v).classList.toggle('active', v === view);
+        document.getElementById('view-' + v).classList.toggle('active', v === view);
+    });
+}
+
+// ---- Load strategies ----
+async function loadStrategies() {
+    try {
+        const res = await fetch('/api/backtest/strategies');
+        const data = await res.json();
+        const sel = document.getElementById('strategy-select');
+        // Keep "All Strategies" option
+        data.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.name;
+            opt.textContent = formatName(s.name);
+            sel.appendChild(opt);
+        });
+    } catch (e) {
+        console.error('Failed to load strategies:', e);
+    }
+}
+
+// ---- Run backtest ----
+async function runBacktest() {
+    const btn = document.getElementById('run-btn');
+    const bar = document.getElementById('progress-bar');
+    const status = document.getElementById('run-status');
+
+    const strategy = document.getElementById('strategy-select').value;
+    const window = document.getElementById('training-window').value;
+    const step = document.getElementById('step-size').value;
+
+    btn.disabled = true;
+    btn.textContent = 'Running...';
+    bar.classList.add('active');
+    status.textContent = 'Backtest in progress. This may take a minute...';
+
+    try {
+        const params = new URLSearchParams({
+            game_type: currentGame,
+            strategy_name: strategy,
+            training_window: window,
+            step: step,
+        });
+        const res = await fetch('/api/backtest/run?' + params, { method: 'POST' });
+        const data = await res.json();
+
+        if (res.ok) {
+            if (data.runs) {
+                status.textContent = `Completed ${data.runs.length} strategy runs.`;
+            } else {
+                const rate = (data.straight_hit_rate * 100).toFixed(2);
+                status.textContent = `Done: ${data.total_predictions} predictions, ${rate}% straight hit rate`;
+            }
+            loadRuns();
+        } else {
+            status.textContent = 'Error: ' + (data.detail || 'Unknown error');
+        }
+    } catch (e) {
+        status.textContent = 'Network error: ' + e.message;
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Backtest';
+        bar.classList.remove('active');
+    }
+}
+
+// ---- Load runs ----
+async function loadRuns() {
+    const tbody = document.getElementById('runs-body');
+    try {
+        const res = await fetch(`/api/backtest/runs?game_type=${currentGame}`);
+        const runs = await res.json();
+
+        if (!runs || runs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:2rem;">No backtest runs yet. Create one above.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = runs.map(r => {
+            const straightPct = (r.straight_hit_rate * 100).toFixed(2);
+            const boxPct = (r.box_hit_rate * 100).toFixed(2);
+            const roiPct = r.roi !== null ? (r.roi * 100).toFixed(1) : '-';
+            const roiClass = r.roi > 0 ? 'badge-positive' : (r.roi < 0 ? 'badge-negative' : 'badge-neutral');
+            const duration = r.run_duration_seconds ? r.run_duration_seconds.toFixed(1) + 's' : '-';
+            const created = r.created_at ? new Date(r.created_at).toLocaleDateString() : '-';
+            const checked = selectedRuns.has(r.id) ? 'checked' : '';
+
+            return `
+                <tr>
+                    <td><input type="checkbox" class="compare-checkbox" value="${r.id}"
+                         ${checked} onclick="toggleRunSelect(event, ${r.id})"></td>
+                    <td onclick="viewRunDetail(${r.id})" style="font-weight:500;">${formatName(r.strategy_name)}</td>
+                    <td onclick="viewRunDetail(${r.id})">#${r.start_draw_number} - #${r.end_draw_number}</td>
+                    <td onclick="viewRunDetail(${r.id})">${r.total_predictions}</td>
+                    <td onclick="viewRunDetail(${r.id})">${straightPct}%</td>
+                    <td onclick="viewRunDetail(${r.id})">${boxPct}%</td>
+                    <td onclick="viewRunDetail(${r.id})"><span class="badge ${roiClass}">${roiPct}%</span></td>
+                    <td onclick="viewRunDetail(${r.id})">${duration}</td>
+                    <td onclick="viewRunDetail(${r.id})">${created}</td>
+                </tr>
+            `;
+        }).join('');
+
+        updateCompareBar();
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);">Failed to load runs.</td></tr>';
+    }
+}
+
+// ---- Run selection for comparison ----
+function toggleRunSelect(e, runId) {
+    e.stopPropagation();
+    if (selectedRuns.has(runId)) {
+        selectedRuns.delete(runId);
+    } else {
+        if (selectedRuns.size >= 4) {
+            e.target.checked = false;
+            return;
+        }
+        selectedRuns.add(runId);
+    }
+    updateCompareBar();
+}
+
+function updateCompareBar() {
+    const bar = document.getElementById('compare-bar');
+    const count = document.getElementById('compare-count');
+    if (selectedRuns.size >= 2) {
+        bar.classList.add('active');
+        count.textContent = selectedRuns.size + ' selected';
+    } else {
+        bar.classList.remove('active');
+        count.textContent = selectedRuns.size + ' selected';
+    }
+}
+
+// ---- Run Detail ----
+async function viewRunDetail(runId) {
+    setView('detail');
+    const container = document.getElementById('detail-content');
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Loading...</p>';
+
+    try {
+        const [runRes, detailRes] = await Promise.all([
+            fetch(`/api/backtest/runs/${runId}`),
+            fetch(`/api/backtest/runs/${runId}/details?limit=50`),
+        ]);
+        const run = await runRes.json();
+        const detailData = await detailRes.json();
+
+        const straightPct = (run.straight_hit_rate * 100).toFixed(2);
+        const boxPct = (run.box_hit_rate * 100).toFixed(2);
+        const ext = run.extended_metrics || {};
+        const baselineStraight = ext.baseline_straight ? (ext.baseline_straight * 100).toFixed(3) : '-';
+        const baselineBox = ext.baseline_box ? (ext.baseline_box * 100).toFixed(3) : '-';
+        const sharpe = ext.sharpe_ratio !== null ? ext.sharpe_ratio?.toFixed(2) : '-';
+        const calError = ext.calibration_error !== null ? (ext.calibration_error * 100).toFixed(2) + '%' : '-';
+        const partialMatch = ext.avg_partial_match_score !== null ? ext.avg_partial_match_score?.toFixed(3) : '-';
+        const straightCI = run.straight_ci ? `[${(run.straight_ci[0]*100).toFixed(2)}%, ${(run.straight_ci[1]*100).toFixed(2)}%]` : '-';
+        const boxCI = run.box_ci ? `[${(run.box_ci[0]*100).toFixed(2)}%, ${(run.box_ci[1]*100).toFixed(2)}%]` : '-';
+        const roiPct = run.roi !== null ? (run.roi * 100).toFixed(1) + '%' : '-';
+        const evPerPlay = run.avg_payout_per_play !== null ? '$' + run.avg_payout_per_play.toFixed(4) : '-';
+
+        container.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <div>
+                    <h2 style="font-size:1.2rem;font-weight:600;">${run.name}</h2>
+                    <span style="font-size:0.8rem;color:var(--text-muted);">${run.total_predictions} predictions | Draws #${run.start_draw_number} - #${run.end_draw_number}</span>
+                </div>
+                <button class="btn btn-outline" onclick="setView('runs')">Back to Runs</button>
+            </div>
+
+            <!-- Summary stats -->
+            <div class="grid-4">
+                <div class="card metric-card">
+                    <div class="metric-value" style="color:var(--accent);">${straightPct}%</div>
+                    <div class="metric-label">Straight Hit Rate</div>
+                    <div class="metric-sub">CI: ${straightCI}</div>
+                    <div class="metric-sub">Baseline: ${baselineStraight}%</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value" style="color:var(--green);">${boxPct}%</div>
+                    <div class="metric-label">Box Hit Rate</div>
+                    <div class="metric-sub">CI: ${boxCI}</div>
+                    <div class="metric-sub">Baseline: ${baselineBox}%</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value">${evPerPlay}</div>
+                    <div class="metric-label">Avg Payout / Play</div>
+                    <div class="metric-sub">ROI: ${roiPct}</div>
+                </div>
+                <div class="card metric-card">
+                    <div class="metric-value">${sharpe}</div>
+                    <div class="metric-label">Sharpe Ratio</div>
+                    <div class="metric-sub">Cal Error: ${calError}</div>
+                    <div class="metric-sub">Partial: ${partialMatch}</div>
+                </div>
+            </div>
+
+            <!-- Hit rate chart -->
+            <div class="card">
+                <div class="card-title">HIT RATE OVER TIME</div>
+                <div class="chart-container">
+                    <canvas id="detail-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Predictions table -->
+            <div class="card">
+                <div class="card-title">INDIVIDUAL PREDICTIONS</div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Predicted</th>
+                                <th>Actual</th>
+                                <th>Straight</th>
+                                <th>Box</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail-predictions-body"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="detail-pagination"></div>
+            </div>
+        `;
+
+        // Render chart
+        renderDetailChart(run.rolling_straight_rate || [], run.rolling_box_rate || []);
+
+        // Render predictions table
+        renderPredictions(detailData.details, 1);
+        renderPagination(detailData.total, 50, 0, runId);
+
+    } catch (e) {
+        container.innerHTML = '<p style="text-align:center;color:var(--red);">Failed to load run detail.</p>';
+        console.error(e);
+    }
+}
+
+function renderDetailChart(straightRates, boxRates) {
+    if (detailChart) detailChart.destroy();
+    const ctx = document.getElementById('detail-chart');
+    if (!ctx) return;
+
+    const labels = straightRates.map((_, i) => i + 1);
+    detailChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Cumulative Straight Rate',
+                    data: straightRates.map(v => v * 100),
+                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(99,102,241,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+                {
+                    label: 'Cumulative Box Rate',
+                    data: boxRates.map(v => v * 100),
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34,197,94,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#8b8d97' } } },
+            scales: {
+                x: {
+                    title: { display: true, text: 'Prediction #', color: '#8b8d97' },
+                    ticks: { color: '#8b8d97', maxTicksLimit: 10 },
+                    grid: { color: 'rgba(42,45,58,0.5)' },
+                },
+                y: {
+                    title: { display: true, text: 'Hit Rate (%)', color: '#8b8d97' },
+                    ticks: { color: '#8b8d97' },
+                    grid: { color: 'rgba(42,45,58,0.5)' },
+                },
+            },
+        },
+    });
+}
+
+function renderPredictions(details, startNum) {
+    const tbody = document.getElementById('detail-predictions-body');
+    if (!details || details.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">No predictions.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = details.map((d, i) => {
+        const pred = d.predicted_digits.join('-');
+        const actual = d.actual_digits.join('-');
+        const sHit = d.straight_hit ? '<span class="hit-yes">HIT</span>' : '<span class="hit-no">Miss</span>';
+        const bHit = d.box_hit ? '<span class="hit-yes">HIT</span>' : '<span class="hit-no">Miss</span>';
+        const conf = (d.confidence * 100).toFixed(1) + '%';
+        return `
+            <tr>
+                <td>${startNum + i}</td>
+                <td>${pred}</td>
+                <td>${actual}</td>
+                <td>${sHit}</td>
+                <td>${bHit}</td>
+                <td>${conf}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function renderPagination(total, limit, currentOffset, runId) {
+    const div = document.getElementById('detail-pagination');
+    const pages = Math.ceil(total / limit);
+    const currentPage = Math.floor(currentOffset / limit) + 1;
+    if (pages <= 1) { div.innerHTML = ''; return; }
+
+    let html = '';
+    for (let p = 1; p <= pages; p++) {
+        const cls = p === currentPage ? 'btn btn-primary' : 'btn btn-outline';
+        html += `<button class="${cls}" onclick="loadPage(${runId}, ${(p-1)*limit}, ${limit})">${p}</button>`;
+    }
+    div.innerHTML = html;
+}
+
+async function loadPage(runId, offset, limit) {
+    try {
+        const res = await fetch(`/api/backtest/runs/${runId}/details?limit=${limit}&offset=${offset}`);
+        const data = await res.json();
+        renderPredictions(data.details, offset + 1);
+        renderPagination(data.total, limit, offset, runId);
+    } catch (e) {
+        console.error('Failed to load page:', e);
+    }
+}
+
+// ---- Compare View ----
+async function compareSelected() {
+    if (selectedRuns.size < 2) return;
+    setView('compare');
+    const container = document.getElementById('compare-content');
+    container.innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:2rem;">Loading comparison...</p>';
+
+    const ids = Array.from(selectedRuns).join(',');
+    try {
+        const res = await fetch(`/api/backtest/compare?run_ids=${ids}`);
+        const data = await res.json();
+
+        // Build comparison table
+        const runs = data.runs;
+        let tableHeader = '<th>Metric</th>' + runs.map(r => `<th>${formatName(r.strategy_name)}<br><small style="color:var(--text-muted);">Run #${r.id}</small></th>`).join('');
+
+        const metrics = [
+            ['Predictions', r => r.total_predictions],
+            ['Straight Hits', r => r.straight_hits],
+            ['Box Hits', r => r.box_hits],
+            ['Straight Rate', r => (r.straight_hit_rate * 100).toFixed(2) + '%'],
+            ['Box Rate', r => (r.box_hit_rate * 100).toFixed(2) + '%'],
+            ['ROI', r => r.roi !== null ? (r.roi * 100).toFixed(1) + '%' : '-'],
+            ['Avg Payout', r => r.avg_payout_per_play !== null ? '$' + r.avg_payout_per_play.toFixed(4) : '-'],
+            ['Duration', r => r.run_duration_seconds ? r.run_duration_seconds.toFixed(1) + 's' : '-'],
+        ];
+
+        let tableRows = metrics.map(([label, fn]) =>
+            `<tr><td style="font-weight:500;">${label}</td>${runs.map(r => `<td>${fn(r)}</td>`).join('')}</tr>`
+        ).join('');
+
+        // McNemar pairwise comparisons
+        let pairwiseHtml = '';
+        if (data.pairwise_comparisons && data.pairwise_comparisons.length > 0) {
+            pairwiseHtml = `
+                <div class="card" style="margin-top:1.5rem;">
+                    <div class="card-title">PAIRWISE SIGNIFICANCE (McNEMAR)</div>
+                    <table>
+                        <thead>
+                            <tr><th>Run A vs B</th><th>Chi2 (Straight)</th><th>p-value</th><th>Significant</th></tr>
+                        </thead>
+                        <tbody>
+                            ${data.pairwise_comparisons.map(c => {
+                                const sig = c.mcnemar_straight.significant;
+                                const sigBadge = sig
+                                    ? '<span class="badge badge-positive">Yes</span>'
+                                    : '<span class="badge badge-neutral">No</span>';
+                                return `<tr>
+                                    <td>Run #${c.run_a} vs #${c.run_b}</td>
+                                    <td>${c.mcnemar_straight.chi2}</td>
+                                    <td>${c.mcnemar_straight.p_value.toFixed(4)}</td>
+                                    <td>${sigBadge}</td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // Friedman test
+        let friedmanHtml = '';
+        if (data.friedman_test) {
+            const ft = data.friedman_test;
+            const fSig = ft.significant
+                ? '<span class="badge badge-positive">Yes</span>'
+                : '<span class="badge badge-neutral">No</span>';
+            friedmanHtml = `
+                <div class="card" style="margin-top:1.5rem;">
+                    <div class="card-title">FRIEDMAN TEST (MULTI-STRATEGY)</div>
+                    <p style="font-size:0.85rem;margin-bottom:0.5rem;">
+                        Statistic: <strong>${ft.statistic}</strong> |
+                        p-value: <strong>${ft.p_value.toFixed(4)}</strong> |
+                        Significant: ${fSig}
+                    </p>
+                    <p style="font-size:0.8rem;color:var(--text-muted);">
+                        Common draws: ${data.common_draws_count}
+                    </p>
+                </div>
+            `;
+        }
+
+        container.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;">
+                <h2 style="font-size:1.2rem;font-weight:600;">Strategy Comparison</h2>
+                <button class="btn btn-outline" onclick="setView('runs')">Back to Runs</button>
+            </div>
+
+            <!-- Comparison chart -->
+            <div class="card">
+                <div class="card-title">HIT RATES COMPARISON</div>
+                <div class="chart-container">
+                    <canvas id="compare-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- Metrics table -->
+            <div class="card">
+                <div class="card-title">METRICS</div>
+                <table>
+                    <thead><tr>${tableHeader}</tr></thead>
+                    <tbody>${tableRows}</tbody>
+                </table>
+            </div>
+
+            ${pairwiseHtml}
+            ${friedmanHtml}
+        `;
+
+        // Render comparison bar chart
+        renderCompareChart(runs);
+    } catch (e) {
+        container.innerHTML = '<p style="text-align:center;color:var(--red);">Failed to load comparison.</p>';
+        console.error(e);
+    }
+}
+
+function renderCompareChart(runs) {
+    if (compareChart) compareChart.destroy();
+    const ctx = document.getElementById('compare-chart');
+    if (!ctx) return;
+
+    const colors = ['#6366f1', '#22c55e', '#eab308', '#f97316', '#ef4444', '#06b6d4'];
+    const labels = runs.map(r => formatName(r.strategy_name));
+
+    compareChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Straight Rate (%)',
+                    data: runs.map(r => (r.straight_hit_rate * 100)),
+                    backgroundColor: runs.map((_, i) => colors[i % colors.length] + '99'),
+                    borderColor: runs.map((_, i) => colors[i % colors.length]),
+                    borderWidth: 1,
+                },
+                {
+                    label: 'Box Rate (%)',
+                    data: runs.map(r => (r.box_hit_rate * 100)),
+                    backgroundColor: runs.map((_, i) => colors[i % colors.length] + '44'),
+                    borderColor: runs.map((_, i) => colors[i % colors.length]),
+                    borderWidth: 1,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { color: '#8b8d97' } } },
+            scales: {
+                x: { ticks: { color: '#8b8d97' }, grid: { color: 'rgba(42,45,58,0.5)' } },
+                y: {
+                    title: { display: true, text: 'Hit Rate (%)', color: '#8b8d97' },
+                    ticks: { color: '#8b8d97' },
+                    grid: { color: 'rgba(42,45,58,0.5)' },
+                },
+            },
+        },
+    });
+}
+
+// ---- Helpers ----
+function formatName(name) {
+    return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+// ---- Init ----
+loadStrategies();
+loadRuns();
+</script>
+{% endblock %}

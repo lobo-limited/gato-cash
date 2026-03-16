@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oraculo — Palette Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-surface: #121210;
+  --bg-card: rgba(20, 18, 16, 0.85);
+  --bg-card-hover: rgba(30, 26, 22, 0.9);
+  --border-subtle: rgba(200, 90, 54, 0.12);
+  --border-active: rgba(200, 90, 54, 0.35);
+  --accent: #C85A36;
+  --accent-hover: #DA6E48;
+  --secondary: #8BA67A;
+  --tertiary: #B8944A;
+  --text-primary: #E8DCC8;
+  --text-secondary: #A09480;
+  --text-muted: #686058;
+  --positive: #8BA67A;
+  --warning: #C85A36;
+  --sidebar-bg: rgba(16, 14, 12, 0.95);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Space Grotesk',sans-serif; background:var(--bg-surface); color:var(--text-primary); -webkit-font-smoothing:antialiased; line-height:1.6; }
+.layout { display:flex; min-height:100vh; }
+.sidebar { width:240px; background:var(--sidebar-bg); border-right:1px solid var(--border-subtle); padding:1.5rem 0; }
+.sidebar-logo { padding:0 1.5rem 1.5rem; font-size:1.2rem; font-weight:700; color:var(--accent); border-bottom:1px solid var(--border-subtle); margin-bottom:1rem; display:flex; align-items:center; gap:0.75rem; }
+.brand-mark { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:linear-gradient(135deg, var(--accent), var(--tertiary)); color:var(--text-primary); font-weight:700; font-size:1.2rem; border-radius:var(--radius-sm); }
+.sidebar-nav a { display:block; padding:0.75rem 1.5rem; color:var(--text-secondary); text-decoration:none; font-size:0.9rem; transition:all 0.15s; }
+.sidebar-nav a:hover, .sidebar-nav a.active { color:var(--text-primary); background:var(--bg-card-hover); }
+.sidebar-nav a.active { border-left:3px solid var(--accent); }
+.main { flex:1; padding:2rem; }
+.page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:2rem; }
+.page-header h1 { font-size:1.5rem; font-weight:600; }
+.grid { display:grid; grid-template-columns:repeat(4,1fr); gap:1.5rem; margin-bottom:1.5rem; }
+.card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius); padding:1.5rem; }
+.card-title { font-size:0.8rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.75rem; }
+.stat-value { font-size:2rem; font-weight:700; }
+.stat-label { font-size:0.8rem; color:var(--text-secondary); }
+.digit-ball { display:inline-flex; align-items:center; justify-content:center; width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, var(--accent), var(--tertiary)); color:var(--bg-surface); font-size:1.3rem; font-weight:700; margin:0 0.25rem; }
+.digit-ball.small { width:36px; height:36px; font-size:1rem; }
+.draw-result { display:flex; align-items:center; gap:1rem; padding:0.75rem 0; border-bottom:1px solid var(--border-subtle); }
+.draw-result:last-child { border-bottom:none; }
+.draw-meta { font-size:0.8rem; color:var(--text-secondary); }
+.badge { display:inline-block; padding:0.2rem 0.6rem; border-radius:100px; font-size:0.75rem; font-weight:600; }
+.badge-midday { background:rgba(184,148,74,0.15); color:var(--tertiary); }
+.badge-evening { background:rgba(200,90,54,0.15); color:var(--accent); }
+.btn { padding:0.5rem 1rem; border:none; border-radius:var(--radius-sm); font-size:0.85rem; font-weight:500; cursor:pointer; }
+.btn-primary { background:var(--accent); color:var(--text-primary); }
+.btn-outline { background:transparent; color:var(--text-secondary); border:1px solid var(--border-subtle); }
+.grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; }
+table { width:100%; border-collapse:collapse; }
+th,td { text-align:left; padding:0.75rem; border-bottom:1px solid var(--border-subtle); font-size:0.85rem; }
+th { color:var(--text-muted); font-weight:500; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em; }
+.hit-yes { color:var(--positive); font-weight:600; }
+.confidence-bar { height:6px; border-radius:3px; background:var(--border-subtle); overflow:hidden; margin-top:0.5rem; }
+.confidence-fill { height:100%; background:linear-gradient(90deg, var(--accent), var(--secondary)); border-radius:3px; }
+.hero-gradient { background: radial-gradient(ellipse at 30% 20%, rgba(200,90,54,0.06), transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(139,166,122,0.04), transparent 50%); }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="sidebar">
+    <div class="sidebar-logo"><span class="brand-mark">O</span> Oraculo</div>
+    <div class="sidebar-nav">
+      <a href="#" class="active">Dashboard</a>
+      <a href="#">Analysis</a>
+      <a href="#">Predictions</a>
+      <a href="#">Numbers Played</a>
+      <a href="#">Backtesting</a>
+      <a href="#">Performance</a>
+      <a href="#">Settings</a>
+    </div>
+  </nav>
+  <main class="main hero-gradient">
+    <div class="page-header"><h1>Dashboard</h1><button class="btn btn-outline">Refresh Data</button></div>
+    <div class="grid">
+      <div class="card"><div class="card-title">Daily 3 Draws</div><div class="stat-value">362</div><div class="stat-label">historical draws</div></div>
+      <div class="card"><div class="card-title">Daily 4 Draws</div><div class="stat-value">182</div><div class="stat-label">historical draws</div></div>
+      <div class="card">
+        <div class="card-title">Latest Daily 3</div>
+        <div style="margin:0.5rem 0"><span class="digit-ball">7</span><span class="digit-ball">8</span><span class="digit-ball">8</span></div>
+        <div class="stat-label">Draw #20923 <span class="badge badge-evening">evening</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Next Prediction</div>
+        <div style="margin:0.5rem 0"><span class="digit-ball">8</span><span class="digit-ball">6</span><span class="digit-ball">0</span></div>
+        <div class="stat-label">Confidence: 5.6%</div>
+        <div class="confidence-bar"><div class="confidence-fill" style="width:5.6%"></div></div>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Recent Daily 3</div>
+        <div class="draw-result"><div><span class="digit-ball small">7</span><span class="digit-ball small">8</span><span class="digit-ball small">8</span></div><div class="draw-meta">#20923 Mar 15 <span class="badge badge-evening">evening</span></div></div>
+        <div class="draw-result"><div><span class="digit-ball small">3</span><span class="digit-ball small">1</span><span class="digit-ball small">5</span></div><div class="draw-meta">#20922 Mar 15 <span class="badge badge-midday">midday</span></div></div>
+        <div class="draw-result"><div><span class="digit-ball small">9</span><span class="digit-ball small">2</span><span class="digit-ball small">4</span></div><div class="draw-meta">#20921 Mar 14 <span class="badge badge-evening">evening</span></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Numbers Played Accuracy</div>
+        <table>
+          <tr><th>Metric</th><th>Value</th></tr>
+          <tr><td>Total Plays</td><td>24</td></tr>
+          <tr><td>Straight Hits</td><td><span class="hit-yes">2 (8.3%)</span></td></tr>
+          <tr><td>Box Hits</td><td><span class="hit-yes">5 (20.8%)</span></td></tr>
+          <tr><td>Net Profit</td><td style="color:var(--positive);font-weight:600">+$847.00</td></tr>
+          <tr><td>ROI</td><td style="color:var(--positive)">3529%</td></tr>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,471 @@
+{% extends "base.html" %}
+
+{% block title %}Performance - CA Lottery Predictor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Strategy Performance</h1>
+    <div style="display:flex;gap:0.75rem;align-items:center;">
+        <select id="gameTypeSelect" class="btn btn-outline" onchange="loadAll()">
+            <option value="daily3">Daily 3</option>
+            <option value="daily4">Daily 4</option>
+        </select>
+        <button class="btn btn-primary" onclick="recalibrate()">Recalibrate Weights</button>
+        <button class="btn btn-outline" onclick="retrain()">Retrain Models</button>
+    </div>
+</div>
+
+<!-- Degradation Alerts -->
+<div id="alertsSection" class="card" style="display:none;">
+    <div class="card-title">Degradation Alerts</div>
+    <div id="alertsList"></div>
+</div>
+
+<!-- Ensemble Weights -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-title">Current Ensemble Weights</div>
+        <div id="weightsContainer" style="height:250px;display:flex;align-items:center;justify-content:center;">
+            <span class="stat-label">Loading...</span>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-title">Weight Evolution (Last 90 Days)</div>
+        <div style="height:250px;position:relative;">
+            <canvas id="weightHistoryChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Matrix -->
+<div class="card">
+    <div class="card-title">Performance Matrix</div>
+    <div style="overflow-x:auto;">
+        <table id="perfMatrix">
+            <thead>
+                <tr>
+                    <th>Strategy</th>
+                    <th>Window</th>
+                    <th>Predictions</th>
+                    <th>Straight Hits</th>
+                    <th>Box Hits</th>
+                    <th>Straight Rate</th>
+                    <th>Box Rate</th>
+                    <th>Avg Confidence</th>
+                    <th>Calibration</th>
+                </tr>
+            </thead>
+            <tbody id="perfMatrixBody">
+                <tr><td colspan="9" style="text-align:center;color:var(--text-muted);">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Calibration Curves -->
+<div class="card">
+    <div class="card-title">Calibration Curves</div>
+    <div style="margin-bottom:1rem;">
+        <select id="calibrationStrategySelect" class="btn btn-outline" onchange="loadCalibration()">
+            <option value="">Select a strategy...</option>
+        </select>
+    </div>
+    <div style="height:300px;position:relative;">
+        <canvas id="calibrationChart"></canvas>
+    </div>
+</div>
+
+<!-- Action Status -->
+<div id="actionStatus" class="card" style="display:none;">
+    <div class="card-title">Action Result</div>
+    <pre id="actionResult" style="color:var(--text);font-size:0.85rem;white-space:pre-wrap;margin:0;"></pre>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const STRATEGY_COLORS = {
+        'frequency': '#6366f1',
+        'cold_due': '#22c55e',
+        'positional_trend': '#f97316',
+        'pair_analysis': '#eab308',
+        'moving_average': '#ef4444',
+        'random_forest': '#06b6d4',
+        'xgboost': '#ec4899',
+        'lstm': '#14b8a6',
+        'ensemble': '#8b5cf6',
+    };
+
+    function getColor(name) {
+        return STRATEGY_COLORS[name] || '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+    }
+
+    function getGameType() {
+        return document.getElementById('gameTypeSelect').value;
+    }
+
+    // ---- Weights ---- //
+    let weightsChart = null;
+    let weightHistoryChart = null;
+    let calibrationChart = null;
+
+    async function loadWeights() {
+        try {
+            const resp = await fetch(`/api/performance/weights?game_type=${getGameType()}`);
+            const data = await resp.json();
+            renderWeights(data.weights);
+        } catch(e) {
+            document.getElementById('weightsContainer').innerHTML =
+                '<span class="stat-label">No weight data available</span>';
+        }
+    }
+
+    function renderWeights(weights) {
+        const container = document.getElementById('weightsContainer');
+        if (!weights || Object.keys(weights).length === 0) {
+            container.innerHTML = '<span class="stat-label">No weights configured (using equal weights)</span>';
+            return;
+        }
+        container.innerHTML = '<canvas id="weightsChartCanvas"></canvas>';
+        const ctx = document.getElementById('weightsChartCanvas').getContext('2d');
+        const labels = Object.keys(weights);
+        const values = Object.values(weights).map(v => (v * 100).toFixed(2));
+        const colors = labels.map(l => getColor(l));
+
+        if (weightsChart) weightsChart.destroy();
+        weightsChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: values,
+                    backgroundColor: colors,
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#e4e4e7', font: { size: 11 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => `${ctx.label}: ${ctx.parsed}%`
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // ---- Weight History ---- //
+    async function loadWeightHistory() {
+        try {
+            const resp = await fetch(`/api/performance/weights/history?game_type=${getGameType()}&days=90`);
+            const data = await resp.json();
+            renderWeightHistory(data.history);
+        } catch(e) {
+            console.error('Failed to load weight history', e);
+        }
+    }
+
+    function renderWeightHistory(history) {
+        const ctx = document.getElementById('weightHistoryChart').getContext('2d');
+        if (weightHistoryChart) weightHistoryChart.destroy();
+
+        if (!history || history.length === 0) {
+            weightHistoryChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'No weight history available',
+                            color: '#8b8d97',
+                        }
+                    }
+                }
+            });
+            return;
+        }
+
+        // Group by strategy.
+        const byStrategy = {};
+        for (const h of history) {
+            if (!byStrategy[h.strategy_name]) byStrategy[h.strategy_name] = [];
+            byStrategy[h.strategy_name].push({ x: h.date, y: h.weight * 100 });
+        }
+
+        const datasets = Object.entries(byStrategy).map(([name, points]) => ({
+            label: name,
+            data: points,
+            borderColor: getColor(name),
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 2,
+            tension: 0.3,
+        }));
+
+        weightHistoryChart = new Chart(ctx, {
+            type: 'line',
+            data: { datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        type: 'category',
+                        ticks: { color: '#8b8d97', font: { size: 10 }, maxTicksLimit: 8 },
+                        grid: { color: '#2a2d3a' },
+                    },
+                    y: {
+                        title: { display: true, text: 'Weight (%)', color: '#8b8d97' },
+                        ticks: { color: '#8b8d97' },
+                        grid: { color: '#2a2d3a' },
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e4e4e7', font: { size: 11 } } }
+                }
+            }
+        });
+    }
+
+    // ---- Performance Matrix ---- //
+    async function loadPerformance() {
+        try {
+            const resp = await fetch(`/api/performance/strategies?game_type=${getGameType()}`);
+            const data = await resp.json();
+            renderPerformanceMatrix(data.strategies);
+            populateStrategySelect(data.strategies);
+        } catch(e) {
+            document.getElementById('perfMatrixBody').innerHTML =
+                '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No performance data</td></tr>';
+        }
+    }
+
+    function renderPerformanceMatrix(strategies) {
+        const tbody = document.getElementById('perfMatrixBody');
+        if (!strategies || strategies.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No performance data. Run calibration first.</td></tr>';
+            return;
+        }
+
+        const windowOrder = ['7d', '30d', '90d', '180d', '365d', 'all'];
+        let html = '';
+
+        for (const s of strategies) {
+            const windows = s.windows || {};
+            const windowKeys = Object.keys(windows).sort(
+                (a, b) => windowOrder.indexOf(a) - windowOrder.indexOf(b)
+            );
+
+            for (let i = 0; i < windowKeys.length; i++) {
+                const w = windowKeys[i];
+                const d = windows[w];
+                const nameCell = i === 0
+                    ? `<td rowspan="${windowKeys.length}" style="font-weight:600;color:${getColor(s.strategy_name)}">${s.strategy_name}</td>`
+                    : '';
+                html += `<tr>
+                    ${nameCell}
+                    <td><span class="badge" style="background:var(--bg-hover);color:var(--text);">${w}</span></td>
+                    <td>${d.total_predictions}</td>
+                    <td>${d.straight_hits}</td>
+                    <td>${d.box_hits}</td>
+                    <td>${formatRate(d.straight_hit_rate)}</td>
+                    <td>${formatRate(d.box_hit_rate)}</td>
+                    <td>${(d.avg_confidence * 100).toFixed(2)}%</td>
+                    <td>${d.calibration_score !== null ? (d.calibration_score * 100).toFixed(1) + '%' : 'N/A'}</td>
+                </tr>`;
+            }
+        }
+
+        tbody.innerHTML = html || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);">No data</td></tr>';
+    }
+
+    function formatRate(rate) {
+        const pct = (rate * 100).toFixed(3);
+        const color = rate > 0 ? 'var(--green)' : 'var(--text-muted)';
+        return `<span style="color:${color}">${pct}%</span>`;
+    }
+
+    function populateStrategySelect(strategies) {
+        const sel = document.getElementById('calibrationStrategySelect');
+        const currentVal = sel.value;
+        sel.innerHTML = '<option value="">Select a strategy...</option>';
+        for (const s of (strategies || [])) {
+            const opt = document.createElement('option');
+            opt.value = s.strategy_name;
+            opt.textContent = s.strategy_name;
+            sel.appendChild(opt);
+        }
+        if (currentVal) sel.value = currentVal;
+    }
+
+    // ---- Calibration Curves ---- //
+    async function loadCalibration() {
+        const strategy = document.getElementById('calibrationStrategySelect').value;
+        if (!strategy) return;
+
+        try {
+            const resp = await fetch(`/api/performance/calibration?strategy_name=${strategy}&game_type=${getGameType()}`);
+            const data = await resp.json();
+            renderCalibration(data);
+        } catch(e) {
+            console.error('Failed to load calibration', e);
+        }
+    }
+
+    function renderCalibration(data) {
+        const ctx = document.getElementById('calibrationChart').getContext('2d');
+        if (calibrationChart) calibrationChart.destroy();
+
+        const bins = data.bins || [];
+        const labels = bins.map(b => b.confidence_range);
+        const boxRates = bins.map(b => b.box_hit_rate * 100);
+        const straightRates = bins.map(b => b.straight_hit_rate * 100);
+        const ideal = bins.map(b => b.confidence_midpoint * 100);
+
+        calibrationChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: 'Ideal (Perfect Calibration)',
+                        data: ideal,
+                        type: 'line',
+                        borderColor: '#8b8d97',
+                        borderDash: [5, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        fill: false,
+                    },
+                    {
+                        label: 'Box Hit Rate (%)',
+                        data: boxRates,
+                        backgroundColor: 'rgba(34,197,94,0.6)',
+                        borderColor: '#22c55e',
+                        borderWidth: 1,
+                    },
+                    {
+                        label: 'Straight Hit Rate (%)',
+                        data: straightRates,
+                        backgroundColor: 'rgba(99,102,241,0.6)',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Predicted Confidence', color: '#8b8d97' },
+                        ticks: { color: '#8b8d97' },
+                        grid: { color: '#2a2d3a' },
+                    },
+                    y: {
+                        title: { display: true, text: 'Actual Hit Rate (%)', color: '#8b8d97' },
+                        ticks: { color: '#8b8d97' },
+                        grid: { color: '#2a2d3a' },
+                        beginAtZero: true,
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e4e4e7' } },
+                    title: {
+                        display: true,
+                        text: `Calibration: ${data.strategy_name} (${data.total_predictions} predictions)`,
+                        color: '#e4e4e7',
+                    }
+                }
+            }
+        });
+    }
+
+    // ---- Degradation Alerts ---- //
+    async function loadAlerts() {
+        try {
+            const resp = await fetch(`/api/performance/degradation?game_type=${getGameType()}`);
+            const data = await resp.json();
+            renderAlerts(data.alerts);
+        } catch(e) {
+            console.error('Failed to load alerts', e);
+        }
+    }
+
+    function renderAlerts(alerts) {
+        const section = document.getElementById('alertsSection');
+        const list = document.getElementById('alertsList');
+
+        if (!alerts || alerts.length === 0) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = 'block';
+        let html = '';
+        for (const a of alerts) {
+            const color = a.severity === 'CRITICAL' ? 'var(--red)' : 'var(--yellow)';
+            const bgColor = a.severity === 'CRITICAL' ? 'rgba(239,68,68,0.1)' : 'rgba(234,179,8,0.1)';
+            html += `<div style="padding:0.75rem;margin-bottom:0.5rem;border-left:3px solid ${color};background:${bgColor};border-radius:4px;">
+                <strong style="color:${color}">${a.severity}</strong>
+                <span style="color:var(--text);margin-left:0.5rem;">
+                    ${a.strategy} &mdash; ${a.metric}: current ${(a.current * 100).toFixed(3)}% vs baseline ${(a.baseline * 100).toFixed(3)}%
+                    (z=${a.z_score.toFixed(2)})
+                </span>
+            </div>`;
+        }
+        list.innerHTML = html;
+    }
+
+    // ---- Admin Actions ---- //
+    async function recalibrate() {
+        showAction('Recalibrating...');
+        try {
+            const resp = await fetch(`/api/admin/calibrate?game_type=${getGameType()}`, { method: 'POST' });
+            const data = await resp.json();
+            showAction(JSON.stringify(data, null, 2));
+            loadAll();
+        } catch(e) {
+            showAction('Error: ' + e.message);
+        }
+    }
+
+    async function retrain() {
+        showAction('Retraining models...');
+        try {
+            const resp = await fetch(`/api/admin/train?game_type=${getGameType()}`, { method: 'POST' });
+            const data = await resp.json();
+            showAction(JSON.stringify(data, null, 2));
+        } catch(e) {
+            showAction('Error: ' + e.message);
+        }
+    }
+
+    function showAction(text) {
+        document.getElementById('actionStatus').style.display = 'block';
+        document.getElementById('actionResult').textContent = text;
+    }
+
+    // ---- Load All ---- //
+    function loadAll() {
+        loadWeights();
+        loadWeightHistory();
+        loadPerformance();
+        loadAlerts();
+    }
+
+    // Initialize on page load.
+    loadAll();
+</script>
+{% endblock %}
