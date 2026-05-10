@@ -73,8 +73,22 @@ from app.routers import (
 )
 from app.routers import performance as performance_router
 from app.services.ingestion import IngestionService
+from app.services.scheduler import lottery_scheduler
 
 _log = get_logger("calottery-predict")
+
+# When the kernel sibling is the production process (KERNEL_PORT unset, PORT
+# is 8201 from systemd), it MUST own the APScheduler so draws keep ingesting,
+# predictions keep scoring, and ensemble weights keep recalibrating.
+#
+# When the kernel sibling is in parallel-test mode (KERNEL_PORT explicitly
+# set so a sibling port is used), it MUST NOT start the scheduler — the
+# legacy production process is still running and owns the schedule, and two
+# schedulers writing the same lottery.db would cause duplicate ingestion +
+# double-scoring.
+#
+# The signal: KERNEL_PORT presence = parallel-test mode = NO scheduler.
+KERNEL_IS_PRODUCTION = os.getenv("KERNEL_PORT") is None
 BASE_DIR = Path(__file__).resolve().parent
 
 
@@ -92,16 +106,21 @@ class CalotterySettings(GatoSettings):
 
 @asynccontextmanager
 async def kernel_lifespan(_app: FastAPI):
-    # Schema is ensured by the production process. We just verify here so a
-    # misconfigured kernel sibling doesn't silently start without tables.
     Base.metadata.create_all(bind=engine)
+    if KERNEL_IS_PRODUCTION:
+        lottery_scheduler.start()
+        scheduler_state = "STARTED — kernel is production"
+    else:
+        scheduler_state = "DISABLED — KERNEL_PORT is set, parallel-test mode (legacy owns the schedule)"
     _log.info(
         "kernel_lifespan_ready",
         database_url=legacy_settings.DATABASE_URL,
         app_mode=legacy_settings.APP_MODE,
-        scheduler="DISABLED on kernel sibling — production process owns the schedule",
+        scheduler=scheduler_state,
     )
     yield
+    if KERNEL_IS_PRODUCTION:
+        lottery_scheduler.shutdown()
     _log.info("kernel_lifespan_shutdown")
 
 
