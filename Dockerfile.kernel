@@ -1,0 +1,48 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Build deps for ML libs (scipy, numpy, xgboost). NCCL was in the legacy
+# Dockerfile but isn't actually used by calottery-predict at runtime — the
+# strategies run sklearn/xgboost on CPU. Dropping it because the packages
+# aren't in default debian repos and adding the NVIDIA apt source isn't
+# worth the complexity for a CPU-only inference workload.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Pre-stage the @gato/* kernel wheels. They're built once on the host
+# (`uv build --wheel` in ~/lobo-limited/gato-kernel-py) and copied into the
+# build context so we don't depend on devpi being reachable at build time.
+COPY kernel-wheels/*.whl /tmp/kernel-wheels/
+
+# Install kernel packages first so they're cached separately from app code.
+# `--no-deps` would skip pulling fastapi/sqlalchemy from PyPI; we want those
+# pulled normally, so pip just resolves transitive deps via PyPI.
+RUN pip install --upgrade pip \
+ && pip install /tmp/kernel-wheels/*.whl
+
+# App deps.
+COPY pyproject.toml .
+RUN pip install -e ".[dev]"
+
+# App code.
+COPY . .
+
+RUN mkdir -p /app/data
+
+# Migrations on startup (best-effort — staying compatible with legacy build).
+RUN alembic upgrade head || true
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Kernel composition entrypoint. Single worker because main_kernel.py starts
+# the APScheduler in its lifespan when production-mode (KERNEL_PORT unset).
+# The legacy --workers 2 had two parallel schedulers; that's a pre-existing
+# concern that the kernel swap deliberately doesn't carry forward.
+CMD ["uvicorn", "app.main_kernel:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -51,3 +51,4 @@ Thumbs.db
 # Alembic
 alembic/versions/__pycache__/
 .venv_kernel/
+kernel-wheels/
