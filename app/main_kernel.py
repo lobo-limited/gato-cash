@@ -271,7 +271,8 @@ async def refresh_draws(db: Session = Depends(get_db)):
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(os.getenv("KERNEL_PORT", "8211"))
+    # KERNEL_PORT = parallel-test override; PORT = systemd convention.
+    port = int(os.getenv("KERNEL_PORT") or os.getenv("PORT") or "8211")
     _log.info(
         "calottery_kernel_boot",
         port=port,
